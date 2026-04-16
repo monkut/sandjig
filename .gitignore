@@ -224,3 +224,5 @@ fabric.properties
 cache/
 output/
 notebooks/*.jpg
+# Large fixtures
+*.zip
