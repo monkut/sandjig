@@ -94,6 +94,10 @@ extend-safe-fixes = [
 ]
 ignore = [
     "A005",
+    "B007",
+    "PERF102",
+    "PLC0415",
+    "UP042",
     "ANN002",
     "ANN003",
     "ANN201",
@@ -148,6 +152,7 @@ ignore = [
     "SLF001",
     "TC001",
     "TC002",
+    "TC003",
     "TD002",  # missing-todo-author
     "TD003",
     "TID252",

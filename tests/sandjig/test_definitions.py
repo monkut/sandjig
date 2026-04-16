@@ -111,7 +111,7 @@ class SandjigAppStackParametersTestCase(unittest.TestCase):
                 UniqueSuffix=suffix,
             )
             default_stage = StageValues.DEVELOPMENT.value
-            expected = f"{prefix}afmx{suffix}-{default_stage}"
+            expected = f"{prefix}sdj{suffix}-{default_stage}"
             self.assertEqual(parameters.get_stack_name(), expected)
 
     def test_validate_sources3bucketname__default(self):

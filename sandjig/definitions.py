@@ -16,7 +16,9 @@ from .settings import (
     SQSQUEUE_VISIBILITYTIMEOUT,
 )
 
-S3_BUCKET_NAME_PATTERN = re.compile(r"^(?!.*\.\.)(?!.*\.-|.*-\.)(?!^\d+\.\d+\.\d+\.\d+$)[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$")
+S3_BUCKET_NAME_PATTERN = re.compile(
+    r"^(?!.*\.\.)(?!.*\.-|.*-\.)(?!^\d+\.\d+\.\d+\.\d+$)[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$"
+)
 
 
 logger = logging.getLogger(__name__)
@@ -139,7 +141,9 @@ class SandjigSettingParameters(BaseModel):
         createapp_identifiers = ("= create_app(", "=create_app(")
         app_content = self.AppPath.read_text(encoding="utf8")
         sandjig_appname_candidate_lines = [
-            line.strip() for line in app_content.split("\n") if any(identifier in line for identifier in createapp_identifiers)
+            line.strip()
+            for line in app_content.split("\n")
+            if any(identifier in line for identifier in createapp_identifiers)
         ]
         sandjig_appname = None
         for candidate_line in sandjig_appname_candidate_lines:

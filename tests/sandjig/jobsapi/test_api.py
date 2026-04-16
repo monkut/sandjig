@@ -366,7 +366,10 @@ class JobsApiAppTestCase(TestCase):
 
         encoded_gte_filter_datetime = quote_plus(gte_filter_datetime)
         encoded_lte_filter_datetime = quote_plus(lte_filter_datetime)
-        url = f"/jobs?registered_datetime_lte={encoded_lte_filter_datetime}&registered_datetime_gte={encoded_gte_filter_datetime}"
+        url = (
+            f"/jobs?registered_datetime_lte={encoded_lte_filter_datetime}"
+            f"&registered_datetime_gte={encoded_gte_filter_datetime}"
+        )
         response = self.client.get(url)
         self.assertEqual(response.status_code, HTTPStatus.OK, response.data.decode("utf8"))
 

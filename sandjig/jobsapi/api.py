@@ -1,5 +1,7 @@
 """Processing Jobs Request API."""
 
+from __future__ import annotations
+
 import datetime
 import json
 import logging
@@ -86,7 +88,9 @@ def create_app(  # noqa: C901, PLR0915
     if request_sqs_url.replace('"', "").strip() in ("None", "False", "false", "", None):
         request_sqs_url = None
 
-    class JobResponse(BaseModel):  # Defined here to dynamically apply RequestPostBodyModel/ResponsePostBodyModel validation
+    class JobResponse(
+        BaseModel
+    ):  # Defined here to dynamically apply RequestPostBodyModel/ResponsePostBodyModel validation
         job_id: UUID
         registered_datetime: datetime.datetime
         updated_datetime: datetime.datetime
@@ -132,7 +136,9 @@ def create_app(  # noqa: C901, PLR0915
                 app.config["BASIC_AUTH_PASSWORD"] = config["BASIC_AUTH_PASSWORD"]
             else:
                 logger.info("Loading BASIC_AUTH_USERNAME, BASIC_AUTH_PASSWORD from ENVAR...")
-                app.config["BASIC_AUTH_USERNAME"] = os.getenv("BASIC_AUTH_USERNAME", settings.DEFAULT_BASIC_AUTH_USERNAME)
+                app.config["BASIC_AUTH_USERNAME"] = os.getenv(
+                    "BASIC_AUTH_USERNAME", settings.DEFAULT_BASIC_AUTH_USERNAME
+                )
                 app.config["BASIC_AUTH_PASSWORD"] = os.getenv("BASIC_AUTH_PASSWORD", None)
                 if not app.config["BASIC_AUTH_PASSWORD"]:
                     raise ValueError("Required environment variable not set: BASIC_AUTH_PASSWORD")
@@ -157,7 +163,9 @@ def create_app(  # noqa: C901, PLR0915
         # validate function is callable
         callback_function = config.get("JOBREQUEST_CALLBACK_FUNCTION")
         if callback_function:
-            assert isinstance(callback_function, Callable), "given config['JOBREQUEST_CALLBACK_FUNCTION'] is not Callable!"
+            assert isinstance(callback_function, Callable), (
+                "given config['JOBREQUEST_CALLBACK_FUNCTION'] is not Callable!"
+            )
 
     else:
         callback_function = None
@@ -175,12 +183,15 @@ def create_app(  # noqa: C901, PLR0915
 
     def execute_callback(job_id: str, job_definition: dict) -> str | None:
         function_name = callback_function.__name__
-        logger.info(f"calling user defined config['JOBREQUEST_CALLBACK_FUNCTION'] ({function_name}), job_id={job_id} ...")
+        logger.info(
+            f"calling user defined config['JOBREQUEST_CALLBACK_FUNCTION'] ({function_name}), job_id={job_id} ..."
+        )
         error = None
         try:
             callback_function(job_id=job_id, job_definition=job_definition)
             logger.info(
-                f"calling user defined config['JOBREQUEST_CALLBACK_FUNCTION'] ({function_name}), job_id={job_id} ... DONE"
+                f"calling user defined config['JOBREQUEST_CALLBACK_FUNCTION'] "
+                f"({function_name}), job_id={job_id} ... DONE"
             )
         except Exception as e:
             error = f"ERROR - {str(e.args)}"
@@ -295,7 +306,9 @@ def create_app(  # noqa: C901, PLR0915
         try:
             validated_data = ResponsePostBodyModel(**request_data)
         except ValidationError as e:
-            return {"message": f"ERROR - invalid input for request: {e.args}"}, HTTPStatus.UNPROCESSABLE_ENTITY.value  # 422
+            return {
+                "message": f"ERROR - invalid input for request: {e.args}"
+            }, HTTPStatus.UNPROCESSABLE_ENTITY.value  # 422
 
         try:
             logger.info(f"retrieving ProcessingJobModel(job_id={job_id})...")
@@ -342,7 +355,9 @@ def create_app(  # noqa: C901, PLR0915
     @api.validate(
         headers=Headers,
         body=SpecRequest(ProcessingJobPatchBody),
-        resp=SpecResponse(HTTP_200=JobResponse, HTTP_401=None, HTTP_404=NotFound404Response, HTTP_429=TooManyRequests429Response),
+        resp=SpecResponse(
+            HTTP_200=JobResponse, HTTP_401=None, HTTP_404=NotFound404Response, HTTP_429=TooManyRequests429Response
+        ),
         tags=["jobs"],
         before=fps_error_logger,
         after=fps_error_logger,
@@ -440,7 +455,8 @@ def create_app(  # noqa: C901, PLR0915
             if len(jobids_filter) > settings.MAX_FILTER_JOBIDS:
                 response_content = {
                     "message": (
-                        f'ERROR - "job_id" filter count({len(jobids_filter)}) > MAX_FILTER_JOBIDS({settings.MAX_FILTER_JOBIDS})!'
+                        f'ERROR - "job_id" filter count({len(jobids_filter)})'
+                        f" > MAX_FILTER_JOBIDS({settings.MAX_FILTER_JOBIDS})!"
                     )
                 }
                 return response_content, HTTPStatus.UNPROCESSABLE_ENTITY.value, headers
@@ -504,12 +520,15 @@ def create_app(  # noqa: C901, PLR0915
         return page, HTTPStatus.OK.value, headers
 
     def _processingjoblist_handle_callback(job_id: str, item: ProcessingJobModel) -> ProcessingJobModel:
-        logger.info(f"callback_function ({callback_function.__name__}) defined calling execute_callback(job_id={job_id}) ...")
+        logger.info(
+            f"callback_function ({callback_function.__name__}) defined calling execute_callback(job_id={job_id}) ..."
+        )
         error = execute_callback(job_id=job_id, job_definition=item.as_dict())
         if error:
             logger.error(error)
             logger.error(
-                f"callback_function ({callback_function.__name__}) defined calling execute_callback(job_id={job_id}) ... ERROR"
+                f"callback_function ({callback_function.__name__}) "
+                f"defined calling execute_callback(job_id={job_id}) ... ERROR"
             )
 
             logger.info(f"updating {job_id} to error status ...")
@@ -523,7 +542,8 @@ def create_app(  # noqa: C901, PLR0915
             logger.info(f"updating {job_id} to error status ... DONE")
         else:
             logger.info(
-                f"callback_function ({callback_function.__name__}) defined calling execute_callback(job_id=job_id) ... DONE"
+                f"callback_function ({callback_function.__name__}) "
+                f"defined calling execute_callback(job_id=job_id) ... DONE"
             )
         return item  # return the item has it may have been updated with ERROR status
 
@@ -661,7 +681,9 @@ def create_app(  # noqa: C901, PLR0915
                 logger.debug("request_data=%s", request_data)
                 validated_data = SettingsModel(**request_data)
             except ValidationError as e:
-                return {"message": f"ERROR - invalid input for request: {e.args}"}, HTTPStatus.UNPROCESSABLE_ENTITY.value
+                return {
+                    "message": f"ERROR - invalid input for request: {e.args}"
+                }, HTTPStatus.UNPROCESSABLE_ENTITY.value
 
             try:
                 logger.info(f"retrieving SettingsModel(SETTINGS_ID={settings.SETTINGS_ID})...")
@@ -706,7 +728,9 @@ def create_app(  # noqa: C901, PLR0915
             logger.info(f"updating ProcessingSettingsModel(SETTINGS_ID={settings.SETTINGS_ID})... DONE")
 
             # retrieve the updated item
-            item: dict = ProcessingSettingsModel.get_processingsettingsmodel_item(settings_id=settings.SETTINGS_ID, as_dict=True)
+            item: dict = ProcessingSettingsModel.get_processingsettingsmodel_item(
+                settings_id=settings.SETTINGS_ID, as_dict=True
+            )
             logger.debug(f"item={item}")
             return item, HTTPStatus.ACCEPTED.value
 

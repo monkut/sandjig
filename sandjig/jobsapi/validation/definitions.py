@@ -60,8 +60,12 @@ class JobsApiQueryParams(BaseModel):
     job_id: list[UUID] | None = Field(
         default=None,
         description=(
-            "指定している `job_id` のみをフィルターして結果を返す (最大、175の`job_id`個のフィルターは可能）例）_/jobs?job_id="
-            "f02e2c3a-8de1-49af-9d0d-6220c0021999,f02e2c3a-8de1-49af-9d0d-6220c0021888,f02e2c3a-8de1-49af-9d0d-6220c0021777_"
+            "指定している `job_id` のみをフィルターして結果を返す"
+            " (最大、175の`job_id`個のフィルターは可能）"
+            "例）_/jobs?job_id="
+            "f02e2c3a-8de1-49af-9d0d-6220c0021999,"
+            "f02e2c3a-8de1-49af-9d0d-6220c0021888,"
+            "f02e2c3a-8de1-49af-9d0d-6220c0021777_"
         ),
     )
     status: StatusSupportedValues | None = Field(

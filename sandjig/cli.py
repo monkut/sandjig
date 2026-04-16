@@ -172,7 +172,8 @@ def _execute_cloudformation_command(
     check_wait_seconds = 10
     max_attempts = 120
     logger.debug(
-        f"{action.value} ({stack_name}) ... (WAITING check_wait_seconds={check_wait_seconds}, max_attempts={max_attempts})"
+        f"{action.value} ({stack_name}) ... "
+        f"(WAITING check_wait_seconds={check_wait_seconds}, max_attempts={max_attempts})"
     )
     waiter.wait(StackName=stack_name, WaiterConfig={"Delay": check_wait_seconds, "MaxAttempts": max_attempts})
 
@@ -224,7 +225,8 @@ def destroy_stack(destroy_stack_name: str) -> None:
     check_wait_seconds = 10
     max_attempts = 120
     logger.debug(
-        f"Deleting {destroy_stack_name} ... (WAITING check_wait_seconds={check_wait_seconds}, max_attempts={max_attempts})"
+        f"Deleting {destroy_stack_name} ... "
+        f"(WAITING check_wait_seconds={check_wait_seconds}, max_attempts={max_attempts})"
     )
     waiter.wait(StackName=destroy_stack_name, WaiterConfig={"Delay": check_wait_seconds, "MaxAttempts": max_attempts})
     logger.debug(f"Deleting {destroy_stack_name} ...SUCCESS")
@@ -333,7 +335,9 @@ def yaml_filepath(value: str) -> Path:
     """Define the argparse type for a Path object of yaml file"""
     p = Path(value)
     if p.suffix not in [".yaml", ".yml"]:
-        warnings.warn("Template file is yaml file. The recommended extension is '.yaml' or '.yml'", SyntaxWarning, stacklevel=2)
+        warnings.warn(
+            "Template file is yaml file. The recommended extension is '.yaml' or '.yml'", SyntaxWarning, stacklevel=2
+        )
 
     return p
 

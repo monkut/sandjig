@@ -76,6 +76,10 @@ def put_processingjobmodel_item(job_id: str = None, **kwargs) -> ProcessingJobMo
 
 def get_zappa_zip_package() -> Path:
     test_zappa_zip_package_filepath = FIXTURES_DIRECTORY / "sandjig-demo-stg-1585874197.zip"
+    if not test_zappa_zip_package_filepath.exists():
+        import pytest
+
+        pytest.skip("Fixture zip not available (excluded from git)")
     return test_zappa_zip_package_filepath
 
 
