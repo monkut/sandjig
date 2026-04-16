@@ -1,0 +1,62 @@
+# Python-generated files
+__pycache__/
+*.py[cod]
+*$py.class
+build/
+dist/
+wheels/
+*.egg-info/
+*.egg
+
+# Virtual environments
+.venv
+.env
+
+# sandjig packages directory
+packages/
+
+# ruff cache
+.ruff_cache/
+
+# Distribution / packaging
+.Python
+develop-eggs/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+share/python-wheels/
+.installed.cfg
+MANIFEST
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+cover/
+test_reports/
+test-reports/
+
+# IDE
+.idea/
+.vscode/
+
+# PyPI configuration file
+.pypirc
+
+# CLAUDE.md
+CLAUDE.md
+*.zip
