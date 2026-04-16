@@ -2,9 +2,6 @@
 
 Agent-native job state management API service for async APIs.
 
-Ported from [aframax](https://github.com/kiconiaworks/aframax) with Python 3.14 and latest dependencies.
-
-
 ## Usage
 
 Define your request/response payload models and create the Flask app:
