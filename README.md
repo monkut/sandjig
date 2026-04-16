@@ -2,7 +2,7 @@
 
 Agent-native job state management API service for async APIs.
 
-Ported from [aframax](https://github.com/kiconiaworks/aframax) with Python 3.14, uv, and latest dependencies.
+Ported from [aframax](https://github.com/kiconiaworks/aframax) with Python 3.14 and latest dependencies.
 
 
 ## Usage
@@ -140,12 +140,35 @@ sandjig template [-h] [-o OUTPUT]
 
 ## Local Development
 
-Python 3.14+ with [uv](https://docs.astral.sh/uv/).
+Python: 3.14
+
+> Requires [uv](https://docs.astral.sh/uv/guides/install-python/) for dependency management
+
 
 ### Setup
 
+1. Install `pre-commit` hooks:
+
+    ```bash
+    pre-commit install
+    ```
+
+2. Install project and development dependencies:
+
+    ```bash
+    uv sync
+    ```
+
+### Run checks
+
 ```bash
-uv sync
+uv run poe check
+```
+
+### Type check
+
+```bash
+uv run poe typecheck
 ```
 
 ### Run tests
@@ -154,19 +177,7 @@ Requires localstack (docker-compose):
 
 ```bash
 docker compose up -d
-uv run pytest -v
-```
-
-### Linting
-
-```bash
-uv run ruff check
-```
-
-### Type checking
-
-```bash
-uv run pyright
+uv run poe test
 ```
 
 

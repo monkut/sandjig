@@ -1,0 +1,269 @@
+AWSTemplateFormatVersion : '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Sandjig Lambda/DynamoDB application
+
+
+Parameters:
+
+  Prefix:
+    Type: String
+    Default: "sdjapp"
+
+  UniqueSuffix:
+    Type: String
+
+  APIGatewayStage:
+    Type: String
+    Default: "stg"
+    AllowedValues:
+    - prd
+    - dev
+    - stg
+
+  PythonRuntime:
+    Type: String
+    Default: "python3.14"
+
+  SourceS3BucketName:
+    Type: String
+
+  SandjigUserPackageName:
+    Type: String
+
+  SandjigAuthorizerPackageName:
+    Type: String
+    Default: "sandjig-basicauth-authorizer.zip"
+
+  ProcessingJobSQSQueueVisibilityTimeout:
+    Type: Number
+    Default: 900
+
+  DynamodbRequestsTableName:
+    Type: String
+
+  DynamodbSettingsTableName:
+    Type: String
+
+  DyanmodbSortIndexName:
+    Type: String
+
+  BasicAuthUsername:
+    Type: String
+
+  BasicAuthPassword:
+    Type: String
+
+
+Resources:
+
+  DeadletterSQSQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub '${Prefix}-afmxdlq-${UniqueSuffix}-${APIGatewayStage}'
+      DelaySeconds: 0
+      MaximumMessageSize: 262144
+      MessageRetentionPeriod: 345600
+      ReceiveMessageWaitTimeSeconds: 0
+      VisibilityTimeout: 900
+
+  ProcessingJobSQSQueue:
+    Type: AWS::SQS::Queue
+    DependsOn:
+      - DeadletterSQSQueue
+    Properties:
+      QueueName: !Sub '${Prefix}-sdjobs-${UniqueSuffix}-${APIGatewayStage}'
+      DelaySeconds: 0
+      MaximumMessageSize: 262144
+      MessageRetentionPeriod: 345600
+      ReceiveMessageWaitTimeSeconds: 0
+      VisibilityTimeout: !Ref ProcessingJobSQSQueueVisibilityTimeout
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt DeadletterSQSQueue.Arn
+        maxReceiveCount: 10
+
+  BasicAuthorizerFunc:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub '${Prefix}-afmxathzr-${UniqueSuffix}-${APIGatewayStage}'
+      CodeUri:
+        Key: !Ref SandjigAuthorizerPackageName
+        Bucket: !Ref SourceS3BucketName
+      Handler: apigwauthorizers.basicauth.check_basicauth_header_authorization_handler
+      Runtime: !Sub '${PythonRuntime}'
+      Environment:
+        Variables:
+          BASIC_AUTH_USERNAME: !Ref BasicAuthUsername
+          BASIC_AUTH_PASSWORD: !Ref BasicAuthPassword
+
+  BasicAuthorizerFuncLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${BasicAuthorizerFunc}"
+      RetentionInDays: 14
+
+  AWSApiGatewayWithBasicAuth:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name: !Sub "${Prefix}-sdjapp-bauth-${UniqueSuffix}-${APIGatewayStage}"
+      StageName: !Ref APIGatewayStage
+      OpenApiVersion: 3.0.2
+      BinaryMediaTypes:
+        - 'image/*'
+      Cors:
+        AllowMethods: "'DELETE,GET,HEAD,OPTIONS,PATCH,POST,PUT'"
+        AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+        AllowOrigin: "'*'"
+        MaxAge: "'3000'"
+      EndpointConfiguration:
+        Type: REGIONAL
+      Auth:
+        Authorizers:
+          BasicAuthorizer:
+            FunctionPayloadType: REQUEST
+            FunctionArn: !GetAtt BasicAuthorizerFunc.Arn
+            Identity:
+              Headers:
+              - authorization
+              ValidationExpression: ^[Bb]asic [-0-9a-zA-z\.]*$
+              ReauthorizeEvery: 0
+        DefaultAuthorizer: BasicAuthorizer
+
+  SandjigAPIFunc:
+    Type: AWS::Serverless::Function
+    DependsOn:
+      - ProcessingJobSQSQueue
+    Properties:
+      FunctionName: !Sub '${Prefix}-sdjapp-${UniqueSuffix}-${APIGatewayStage}'
+      Handler: handler.lambda_handler
+      Runtime: !Sub '${PythonRuntime}'
+      CodeUri:
+        Key: !Ref SandjigUserPackageName
+        Bucket: !Ref SourceS3BucketName
+      Timeout: 900
+      MemorySize: 2048
+      Policies:
+        - LambdaInvokePolicy:
+            FunctionName: !Sub '${Prefix}-sdjapp-${UniqueSuffix}-${APIGatewayStage}'
+            Region: !Sub "${AWS::Region}"
+        - AmazonDynamoDBFullAccess
+        - Statement:
+          - Sid: ProcessingJobSQSQueuePolicy
+            Action:
+              - "sqs:ChangeMessageVisibility"
+              - "sqs:ChangeMessageVisibilityBatch"
+              - "sqs:DeleteMessage"
+              - "sqs:DeleteMessageBatch"
+              - "sqs:GetQueueAttributes"
+              - "sqs:ReceiveMessage"
+              - "sqs:GetQueueUrl"
+              - "sqs:SendMessage*"
+            Resource: !GetAtt ProcessingJobSQSQueue.Arn
+
+            Effect: "Allow"
+        - Statement:
+          - Sid: DeadletterSQSQueuePolicy
+            Effect: "Allow"
+            Action:
+              - "sqs:AddPermission"
+              - "sqs:CreateQueue"
+              - "sqs:GetQueueAttributes"
+              - "sqs:GetQueueUrl"
+              - "sqs:ListQueues"
+              - "sqs:ListQueueTags"
+              - "sqs:SetQueueAttributes"
+            Resource: !GetAtt DeadletterSQSQueue.Arn
+
+      Environment:
+        Variables:
+          UNIQUE_SUFFIX: !Ref UniqueSuffix
+          BASIC_AUTH_USERNAME: !Ref BasicAuthUsername
+          BASIC_AUTH_PASSWORD: !Ref BasicAuthPassword
+          DATA_BUCKET: !Sub "${Prefix}-data-${UniqueSuffix}-${APIGatewayStage}"
+          PROCESSINGJOB_SQS_QUEUE_NAME: !GetAtt ProcessingJobSQSQueue.QueueName
+          PROCESSINGJOB_SQS_QUEUE_ARN: !GetAtt ProcessingJobSQSQueue.Arn
+          PROCESSINGJOB_REQUEST_QUEUE_URL: !Ref ProcessingJobSQSQueue
+          DYNAMODB_PROCESSINGJOB_REQUESTS_TABLENAME: !Ref DynamodbRequestsTableName
+          DYNAMODB_PROCESSINGJOB_SETTINGS_TABLENAME: !Ref DynamodbSettingsTableName
+          DYNAMODB_SORTINDEX_INDEXNAME: !Ref DyanmodbSortIndexName
+
+      Events:
+        ProxyApiRoot:
+          Type: Api
+          Properties:
+            Path: /
+            Method: ANY
+            RestApiId: !Ref AWSApiGatewayWithBasicAuth
+        ProxyApiGreedy:
+          Type: Api
+          Properties:
+            Path: /{proxy+}
+            Method: ANY
+            RestApiId: !Ref AWSApiGatewayWithBasicAuth
+
+  SandjigAPIFuncLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${SandjigAPIFunc}"
+      RetentionInDays: 14
+
+  WWWAuthenticateGatewayResponse:
+    Type: AWS::ApiGateway::GatewayResponse
+    Properties:
+      ResponseParameters:
+        gatewayresponse.header.WWW-Authenticate: "'Basic'"
+        gatewayresponse.header.Access-Control-Expose-Headers: "'WWW-Authenticate,X-Next'"
+      ResponseTemplates:
+        application/json: '{"message": $context.error.messageString}'
+      ResponseType: UNAUTHORIZED
+      RestApiId: !Ref AWSApiGatewayWithBasicAuth
+      StatusCode: '401'
+
+  CloudwatchEventsInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt SandjigAPIFunc.Arn
+      Action: 'lambda:InvokeFunction'
+      Principal: events.amazonaws.com
+
+Outputs:
+  DeadletterSQSQueueName:
+    Description: 'DeadletterSQSQueue Name'
+    Value: !GetAtt DeadletterSQSQueue.QueueName
+    Export:
+      Name: !Sub '${AWS::StackName}-DeadletterSQSQueueName'
+
+  DeadletterSQSQueueUrl:
+    Description: 'DeadletterSQSQueue Url'
+    Value: !Ref DeadletterSQSQueue
+    Export:
+      Name: !Sub '${AWS::StackName}-DeadletterSQSQueueUrl'
+
+  ProcessingJobSQSQueueName:
+    Description: 'ProcessingJobSQSQueue Name'
+    Value: !GetAtt ProcessingJobSQSQueue.QueueName
+    Export:
+      Name: !Sub '${AWS::StackName}-ProcessingJobSQSQueueName'
+
+  ProcessingJobSQSQueueUrl:
+    Description: 'ProcessingJobSQSQueue Url'
+    Value: !Ref ProcessingJobSQSQueue
+    Export:
+      Name: !Sub '${AWS::StackName}-ProcessingJobSQSQueueUrl'
+
+  AWSApiGatewayWithBasicAuthRestApiId:
+    Description: API Gateway endpoint URL for defined ApiGatewayStage
+    Value: !Ref AWSApiGatewayWithBasicAuth
+    Export:
+      Name: !Sub '${AWS::StackName}-AWSApiGatewayWithBasicAuthRestApiId'
+
+  AWSApiGatewayWithBasicAuthUrl:
+    Description: API Gateway endpoint URL for defined ApiGatewayStage
+    Value: !Sub "https://${AWSApiGatewayWithBasicAuth}.execute-api.${AWS::Region}.amazonaws.com/${APIGatewayStage}/"
+    Export:
+      Name: !Sub '${AWS::StackName}-AWSApiGatewayWithBasicAuthUrl'
+
+  SandjigAPIFunc:
+    Description: 'SandjigAPIFunc Name value'
+    Value: !Ref SandjigAPIFunc
+    Export:
+      Name: !Sub '${AWS::StackName}-SandjigAPIFunc'

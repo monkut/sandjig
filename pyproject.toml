@@ -4,16 +4,21 @@ version = "0.1.0"
 description = "Agent-native job state management API service for async APIs"
 authors = [{ name = "Kiconia Works", email = "developers@kiconiaworks.com" }]
 readme = "README.md"
-keywords = ["python", "async-api", "job-state", "agent-native"]
-requires-python = ">=3.14"
+keywords = ['python']
+requires-python = ">=3.14,<3.15"
 classifiers = [
     "Intended Audience :: Developers",
+    "Private :: Do Not Upload",
     "Programming Language :: Python",
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: 3.14",
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
 license = "MIT"
+license-files = ["LICENSE"]
+
 
 dependencies = [
     "flask",
@@ -30,14 +35,39 @@ dependencies = [
 Repository = "https://github.com/monkut/sandjig"
 
 [dependency-groups]
-dev = ["pyright", "ruff", "pytest"]
+dev = [
+    "pyright>=1.1.396",
+    "ruff>=0.9.10",
+    "pytest>=8.3.5",
+    "poethepoet>=0.34.0",
+]
 
 [build-system]
-requires = ["uv_build>=0.9.17,<0.10.0"]
-build-backend = "uv_build"
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["."]  # list of folders that contain the packages (["."] by default)
+include = ["sandjig*"]  # package names should match these glob patterns (["*"] by default)
+exclude = []  # exclude packages matching these glob patterns (empty by default)
+
+# Task runner
+[tool.poe.tasks]
+check = "uv run ruff check"
+typecheck = "uv run pyright"
+
+create-project-bucket = "aws s3 mb s3://sandjig --region ${AWS_DEFAULT_REGION}"
+get-project-data = "aws s3 cp s3://sandjig/ ./data --recursive"
+put-project-data = "aws s3 cp ./data s3://sandjig/ --recursive"
+
+
+[tool.poe.tasks.test]
+# run the test command in a shell
+shell = "mkdir test-reports || true && uv run pytest -v tests/ --junitxml=test-reports/junit.xml"
+
 
 [tool.pyright]
-include = ["src/sandjig"]
+include = ["sandjig", "notebooks"]
 exclude = ["**/.venv", "tmp/", "**/node_modules/", "**/__pycache__", "**/*.pyc", "tests/"]
 typeCheckingMode = "basic"
 pythonVersion = "3.14"
@@ -47,10 +77,10 @@ testpaths = ["tests"]
 log_cli = 1
 
 [tool.ruff]
-line-length = 130
+line-length = 120
 indent-width = 4
-target-version = "py314"
-exclude = [".git", ".venv", "**/node_modules/", "**/.volta"]
+target-version ='py314'
+exclude = [".git", ".venv", "**/node_modules/", "**/.volta", "jupyter/*"]
 fix = true
 respect-gitignore = true
 unsafe-fixes = false
@@ -59,8 +89,8 @@ unsafe-fixes = false
 select = ["ALL"]
 extend-per-file-ignores = { "**/__init__.py" = ["I", "F403"] }
 extend-safe-fixes = [
-    "D200",
-    "ANN204",
+    "D200",  # unnecessary-multiline-docstring
+    "ANN204"  # missing-return-type-special-method (__init__)
 ]
 ignore = [
     "A005",
@@ -69,7 +99,7 @@ ignore = [
     "ANN201",
     "ARG002",
     "ARG003",
-    "C401",
+    "C401",  # rewrite as a set comprehension
     "COM812",
     "COM819",
     "D100",
@@ -95,14 +125,14 @@ ignore = [
     "EM101",
     "EM102",
     "ERA001",
-    "EXE002",
+    "EXE002",  # file is executable but no shebang is present
     "FBT",
     "FIX002",
     "G004",
     "INP001",
     "ISC001",
     "ISC002",
-    "PERF401",
+    "PERF401",  # Use `list.extend` to create a transformed list
     "PLR0913",
     "PT009",
     "PT011",
@@ -113,12 +143,12 @@ ignore = [
     "RET504",
     "RUF",
     "S101",
-    "SIM108",
-    "SIM118",
+    "SIM108",  # if-else-block-instead-of-if-exp
+    "SIM118",  # Use `key in dict` instead of `key in dict.keys()`
     "SLF001",
     "TC001",
     "TC002",
-    "TD002",
+    "TD002",  # missing-todo-author
     "TD003",
     "TID252",
     "TRY003",
@@ -126,11 +156,14 @@ ignore = [
 
 exclude = ["target", "tmp", "data", "notebooks", "migrations"]
 
+# Allow fix for all enabled rules (when `--fix`) is provided.
 fixable = ["ALL"]
 unfixable = []
+# Allow unused variables when underscore-prefixed.
 dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
 
 [tool.ruff.lint.mccabe]
+# Flag errors (`C901`) whenever the complexity level exceeds this value.
 max-complexity = 13
 
 [tool.ruff.lint.isort]
