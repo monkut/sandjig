@@ -1,7 +1,5 @@
 """Processing Jobs Request API."""
 
-from __future__ import annotations
-
 import datetime
 import json
 import logging
@@ -18,7 +16,7 @@ from uuid import UUID, uuid4
 from flask import Flask, request
 from flask.wrappers import Request, Response
 from flask_basicauth import BasicAuth
-from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, create_model, model_validator
 from pynamodb.exceptions import QueryError, VerboseClientError
 
 from .. import settings
@@ -88,26 +86,36 @@ def create_app(  # noqa: C901, PLR0915
     if request_sqs_url.replace('"', "").strip() in ("None", "False", "false", "", None):
         request_sqs_url = None
 
-    class JobResponse(
-        BaseModel
-    ):  # Defined here to dynamically apply RequestPostBodyModel/ResponsePostBodyModel validation
-        job_id: UUID
-        registered_datetime: datetime.datetime
-        updated_datetime: datetime.datetime
-        completed_datetime: datetime.datetime | None = None
-        status: StatusSupportedValues
-        errors: list[str] | None = None
-        result_count: int = Field(description="出力される結果の数", default=0)
-        settings: SettingsModel | None = None  # noqa: UP007  - 'Optional' needed when value is None
-        request_payload: RequestPostBodyModel
-        response_payload: ResponsePostBodyModel | None = None  # noqa: UP007 - 'Optional' needed when value is None
-
+    # JobResponse is synthesised at runtime because each caller supplies its own
+    # RequestPostBodyModel / ResponsePostBodyModel / SettingsModel. pydantic.create_model
+    # is the idiomatic way to build dynamic pydantic v2 models — it avoids closure-scoped
+    # forward-reference issues that arise with a nested `class ...(BaseModel)` statement.
+    class _JobResponseBase(BaseModel):
         def model_dump(self, *args, **kwargs) -> dict:
             d = super().model_dump(*args, **kwargs)
             for k, v in d.items():
                 if v and k.endswith("datetime"):
                     d[k] = v.isoformat()
             return d
+
+    # SettingsModel is a runtime parameter that may be None — can't write
+    # `SettingsModel | None` because `None | None` raises TypeError at evaluation.
+    settings_field: tuple[Any, Any] = (SettingsModel | None, None) if SettingsModel is not None else (None, None)
+
+    JobResponse = create_model(  # noqa: N806
+        "JobResponse",
+        __base__=_JobResponseBase,
+        job_id=(UUID, ...),
+        registered_datetime=(datetime.datetime, ...),
+        updated_datetime=(datetime.datetime, ...),
+        completed_datetime=(datetime.datetime | None, None),
+        status=(StatusSupportedValues, ...),
+        errors=(list[str] | None, None),
+        result_count=(int, Field(description="出力される結果の数", default=0)),
+        settings=settings_field,
+        request_payload=(RequestPostBodyModel, ...),
+        response_payload=(ResponsePostBodyModel | None, None),
+    )
 
     class ResponsePostBodyListModel(BaseModel):
         """Create Validation model for List of Responses"""
