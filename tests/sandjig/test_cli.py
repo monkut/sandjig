@@ -23,7 +23,9 @@ class CliTestCase(TestCase):
     @mock.patch(
         "sandjig.aws.CFN_CLIENT.describe_stacks",
         return_value={
-            "Stacks": [{"Outputs": [{"OutputKey": "AWSApiGatewayWithBasicAuthUrl", "OutputValue": "http://test.com/dev"}]}]
+            "Stacks": [
+                {"Outputs": [{"OutputKey": "AWSApiGatewayWithBasicAuthUrl", "OutputValue": "http://test.com/dev"}]}
+            ]
         },
     )
     def test_deploy(self, *_, **__):

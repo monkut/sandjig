@@ -46,7 +46,9 @@ def get_yyyymm_key(ts: int | None = None) -> int:
     if ts is not None:
         # convert ts to yyyymm hashkey format
         start_of_month = (
-            datetime.datetime.fromtimestamp(ts).astimezone(datetime.UTC).replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+            datetime.datetime.fromtimestamp(ts)
+            .astimezone(datetime.UTC)
+            .replace(day=1, hour=0, minute=0, second=0, microsecond=0)
         )
     else:
         start_of_month = datetime.datetime.now(datetime.UTC).replace(day=1, hour=0, minute=0, second=0, microsecond=0)
@@ -119,7 +121,11 @@ class ProcessingJobModel(Model):
         # replace settings {} with None -- fails JSON validation if {}
         if not result_dict["settings"] and isinstance(result_dict["settings"], dict):
             result_dict["settings"] = None
-        if "predictor_status" in result_dict and result_dict["predictor_status"] and result_dict["status"] != "cancelled":
+        if (
+            "predictor_status" in result_dict
+            and result_dict["predictor_status"]
+            and result_dict["status"] != "cancelled"
+        ):
             result_dict["status"] = result_dict["predictor_status"]
         if "predictor_status" in result_dict:
             result_dict.pop("predictor_status")
@@ -139,7 +145,9 @@ class ProcessingJobModel(Model):
         raise ItemDoesNotExistError(f"ProcessingJobModel(job_id={job_id}) not found!")
 
     @classmethod
-    def get_processingjobmodel_items(cls, job_ids: list[str | UUID], as_dict: bool = True) -> list[dict | ProcessingJobModel]:
+    def get_processingjobmodel_items(
+        cls, job_ids: list[str | UUID], as_dict: bool = True
+    ) -> list[dict | ProcessingJobModel]:
         """Return items matching given job_ids"""
         normalized_job_ids = [str(job_id) for job_id in job_ids]
         results = ProcessingJobModel.batch_get(normalized_job_ids)
@@ -343,7 +351,9 @@ class ProcessingSettingsModel(Model):
     settings = JSONAttribute(default=get_jsonattribute_default)
 
     @classmethod
-    def get_processingsettingsmodel_item(cls, settings_id: str | UUID, as_dict: bool = True) -> dict | ProcessingSettingsModel:
+    def get_processingsettingsmodel_item(
+        cls, settings_id: str | UUID, as_dict: bool = True
+    ) -> dict | ProcessingSettingsModel:
         """Return single item matching settings_id"""
         query_results = list(ProcessingSettingsModel.query(str(settings_id)))
         if query_results:

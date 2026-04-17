@@ -5,16 +5,12 @@ from sandjig.jobsapi.validation.definitions import ProcessingJobPatchBody, Statu
 
 
 def test_processingjobpatchbody_validation__valid():
-    data = {
-        'status': StatusSupportedValues.CANCELLED.value
-    }
+    data = {"status": StatusSupportedValues.CANCELLED.value}
     validated_data = ProcessingJobPatchBody(**data)
     assert validated_data
 
 
 def test_processingjobpatchbody_validation__invalid():
-    data = {
-        'status': "other"
-    }
+    data = {"status": "other"}
     with pytest.raises(ValidationError):
         _ = ProcessingJobPatchBody(**data)

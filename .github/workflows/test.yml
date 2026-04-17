@@ -1,0 +1,59 @@
+name: Test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v6
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Ruff check
+        run: uv run poe check
+
+  test:
+    runs-on: ubuntu-latest
+    services:
+      localstack:
+        image: localstack/localstack:4.3.0
+        ports:
+          - 4566:4566
+        env:
+          SERVICES: s3,dynamodb,sqs,cloudformation
+        options: >-
+          --health-cmd "curl -f http://localhost:4566/_localstack/health"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      AWS_ACCOUNT_ID: "000000000000"
+      AWS_DEFAULT_REGION: ap-northeast-1
+      AWS_ACCESS_KEY_ID: test
+      AWS_SECRET_ACCESS_KEY: test
+      TESTING: "True"
+      DYNAMODB_SERVICE_ENDPOINT: http://localhost:4566
+      S3_SERVICE_ENDPOINT: http://localhost:4566
+      SQS_SERVICE_ENDPOINT: http://localhost:4566
+      STS_SERVICE_ENDPOINT: http://localhost:4566
+      CFN_SERVICE_ENDPOINT: http://localhost:4566
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v6
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Run tests
+        run: uv run poe test

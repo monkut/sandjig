@@ -16,13 +16,20 @@ S3_CLIENT = boto3.client("s3", config=BOTO3_CONFIG, endpoint_url=settings.AWS_SE
 S3_RESOURCE = boto3.resource("s3", config=BOTO3_CONFIG, endpoint_url=settings.AWS_SERVICE_ENDPOINTS["s3"])
 
 SQS_CLIENT = boto3.client(
-    "sqs", config=BOTO3_CONFIG, region_name=settings.AWS_DEFAULT_REGION, endpoint_url=settings.AWS_SERVICE_ENDPOINTS["sqs"]
+    "sqs",
+    config=BOTO3_CONFIG,
+    region_name=settings.AWS_DEFAULT_REGION,
+    endpoint_url=settings.AWS_SERVICE_ENDPOINTS["sqs"],
 )
 
 DYNAMODB_CLIENT = boto3.client("dynamodb", config=BOTO3_CONFIG, endpoint_url=settings.AWS_SERVICE_ENDPOINTS["dynamodb"])
-DYNAMODB_RESOURCE = boto3.resource("dynamodb", config=BOTO3_CONFIG, endpoint_url=settings.AWS_SERVICE_ENDPOINTS["dynamodb"])
+DYNAMODB_RESOURCE = boto3.resource(
+    "dynamodb", config=BOTO3_CONFIG, endpoint_url=settings.AWS_SERVICE_ENDPOINTS["dynamodb"]
+)
 
-CFN_CLIENT = boto3.client("cloudformation", config=BOTO3_CONFIG, endpoint_url=settings.AWS_SERVICE_ENDPOINTS["cloudformation"])
+CFN_CLIENT = boto3.client(
+    "cloudformation", config=BOTO3_CONFIG, endpoint_url=settings.AWS_SERVICE_ENDPOINTS["cloudformation"]
+)
 
 
 def parse_s3_uri(uri: str) -> tuple[str, str]:
