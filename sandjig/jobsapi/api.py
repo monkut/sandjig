@@ -86,10 +86,8 @@ def create_app(  # noqa: C901, PLR0915
     if request_sqs_url.replace('"', "").strip() in ("None", "False", "false", "", None):
         request_sqs_url = None
 
-    # JobResponse is synthesised at runtime because each caller supplies its own
-    # RequestPostBodyModel / ResponsePostBodyModel / SettingsModel. pydantic.create_model
-    # is the idiomatic way to build dynamic pydantic v2 models — it avoids closure-scoped
-    # forward-reference issues that arise with a nested `class ...(BaseModel)` statement.
+    # Use create_model: closure-scoped `class` + pydantic v2 can't resolve
+    # RequestPostBodyModel / ResponsePostBodyModel / SettingsModel forward refs.
     class _JobResponseBase(BaseModel):
         def model_dump(self, *args, **kwargs) -> dict:
             d = super().model_dump(*args, **kwargs)
@@ -98,8 +96,7 @@ def create_app(  # noqa: C901, PLR0915
                     d[k] = v.isoformat()
             return d
 
-    # SettingsModel is a runtime parameter that may be None — can't write
-    # `SettingsModel | None` because `None | None` raises TypeError at evaluation.
+    # `SettingsModel | None` would raise TypeError when SettingsModel is None.
     settings_field: tuple[Any, Any] = (SettingsModel | None, None) if SettingsModel is not None else (None, None)
 
     JobResponse = create_model(  # noqa: N806

@@ -28,7 +28,7 @@ jobs:
         ports:
           - 4566:4566
         env:
-          SERVICES: s3,dynamodb,sqs,sts,cloudformation,lambda,apigateway,iam
+          SERVICES: s3,dynamodb,sqs,cloudformation
         options: >-
           --health-cmd "curl -f http://localhost:4566/_localstack/health"
           --health-interval 10s
