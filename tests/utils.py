@@ -25,6 +25,12 @@ class TestResponsePostPayloadModel(ResponsePostPayloadBaseModel):
     __test__ = False
 
 
+class TestResponseWithCountModel(ResponsePostPayloadBaseModel):
+    result: int
+    result_count: int
+    __test__ = False
+
+
 class SettingsModel(SettingsBaseModel):
     intvalue: int = 1
     strvalue: str = "value"
