@@ -129,7 +129,10 @@ class ProcessingJobModel(Model):
             result_dict["status"] = result_dict["predictor_status"]
         if "predictor_status" in result_dict:
             result_dict.pop("predictor_status")
-        result_dict["result_count"] = 0
+        response_payload = result_dict.get("response_payload")
+        result_dict["result_count"] = (
+            response_payload.get("result_count", 0) if isinstance(response_payload, dict) else 0
+        )
         return result_dict
 
     @classmethod

@@ -20,6 +20,7 @@ from ...utils import (
     SettingsModel,
     TestRequestPostPayloadModel,
     TestResponsePostPayloadModel,
+    TestResponseWithCountModel,
     get_authorization_basic_auth,
     reset_dynamodb,
     reset_sqs_queue,
@@ -618,3 +619,37 @@ class BuiltAppBasicAuthTestCase(TestCase):
         # OPTIONSで200 OK が返してくることを確認
         response = self.client.get(url)
         self.assertEqual(response.status_code, HTTPStatus.OK)
+
+
+class ResultCountTestCase(TestCase):
+    """Regression tests for result_count derived from response_payload (issue #4)."""
+
+    def setUp(self) -> None:
+        reset_dynamodb()
+        reset_sqs_queue()
+        self.app = create_app(TestRequestPostPayloadModel, TestResponseWithCountModel)
+        self.app.config["TESTING"] = True
+        self.client = self.app.test_client()
+
+    def test_result_count_reflected_from_response_payload(self):
+        response = self.client.post("/jobs", json={"color": "blue", "value": 1})
+        self.assertEqual(response.status_code, HTTPStatus.CREATED)
+        job_id = response.json["job_id"]
+
+        expected_count = 7
+        response = self.client.put(f"/jobs/{job_id}", json={"result": 42, "result_count": expected_count})
+        self.assertEqual(response.status_code, HTTPStatus.OK, response.data)
+        self.assertEqual(response.json["result_count"], expected_count)
+
+    def test_result_count_defaults_to_zero_when_absent(self):
+        app = create_app(TestRequestPostPayloadModel, TestResponsePostPayloadModel)
+        app.config["TESTING"] = True
+        client = app.test_client()
+
+        response = client.post("/jobs", json={"color": "red", "value": 2})
+        self.assertEqual(response.status_code, HTTPStatus.CREATED)
+        job_id = response.json["job_id"]
+
+        response = client.put(f"/jobs/{job_id}", json={"result": 99})
+        self.assertEqual(response.status_code, HTTPStatus.OK, response.data)
+        self.assertEqual(response.json["result_count"], 0)
