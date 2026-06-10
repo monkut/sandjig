@@ -29,6 +29,7 @@ from .settings import (
     DEFAULT_TEMPLATE_OUTPUT_FILEPATH,
     INDEXNAME_ROOT,
     REQUESTS_TABLENAME_ROOT,
+    RESOURCES_TEMPLATE_FILEPATH,
     SANDJIG_SUFFIX,
     SETTINGS_TABLENAME_ROOT,
     TEMPLATE_FILEPATH,
@@ -517,6 +518,16 @@ def process_commandline_args() -> None:
         default=DEFAULT_TEMPLATE_OUTPUT_FILEPATH,
         help="full filepath of cloudformation template file",
     )
+    template_command_parser.add_argument(
+        "--resources-only",
+        dest="resources_only",
+        action="store_true",
+        default=False,
+        help=(
+            "output the data-plane-only template (SQS queues + DynamoDB tables) "
+            "for use when the create_app() application is deployed separately (e.g. via Zappa)"
+        ),
+    )
 
     version_info = sys.version_info
     user_runtime = ValidPythonRuntimes(f"python{version_info.major}.{version_info.minor}")
@@ -531,7 +542,8 @@ def process_commandline_args() -> None:
     elif args.command == "package":
         _handle_package_command(args, user_runtime)
     elif args.command == "template":
-        copy_cfn_template_file(TEMPLATE_FILEPATH, args.output)
+        template_source = RESOURCES_TEMPLATE_FILEPATH if args.resources_only else TEMPLATE_FILEPATH
+        copy_cfn_template_file(template_source, args.output)
 
 
 if __name__ == "__main__":

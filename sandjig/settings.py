@@ -42,6 +42,7 @@ BASIC_AUTH_USERNAME = os.getenv("BASIC_AUTH_USERNAME", DEFAULT_BASIC_AUTH_USERNA
 BASIC_AUTH_PASSWORD = os.getenv("BASIC_AUTH_PASSWORD", None)
 
 TEMPLATE_FILEPATH = Path(__file__).parent / "cloudformation" / "app.sam.yaml"
+RESOURCES_TEMPLATE_FILEPATH = Path(__file__).parent / "cloudformation" / "resources.sam.yaml"
 
 MAX_FILTER_JOBIDS = 175
 
