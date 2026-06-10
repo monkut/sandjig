@@ -51,6 +51,11 @@ where = ["."]  # list of folders that contain the packages (["."] by default)
 include = ["sandjig*"]  # package names should match these glob patterns (["*"] by default)
 exclude = []  # exclude packages matching these glob patterns (empty by default)
 
+[tool.setuptools.package-data]
+# Non-Python data required at runtime: swagger/openapi assets asserted at import
+# (definitions.py) and the CloudFormation templates served by `sandjig template`.
+sandjig = ["static/**/*", "cloudformation/*.yaml"]
+
 # Task runner
 [tool.poe.tasks]
 check = "uv run ruff check"
