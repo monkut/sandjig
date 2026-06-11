@@ -1,0 +1,148 @@
+AWSTemplateFormatVersion : '2010-09-09'
+Description: >
+  Sandjig data-plane resources only (SQS queues + DynamoDB tables).
+  Use when the application is built by extending the Flask app returned by
+  create_app() and deployed separately (e.g. via Zappa), so the full app.sam.yaml
+  compute stack is not used. Billing is PAY_PER_REQUEST so the stack has no idle
+  cost. The application's role needs dynamodb read/write on the tables and
+  sqs:SendMessage on the jobs queue.
+
+
+Parameters:
+
+  Prefix:
+    Type: String
+    Default: "sdjapp"
+
+  UniqueSuffix:
+    Type: String
+
+  APIGatewayStage:
+    Type: String
+    Default: "stg"
+    AllowedValues:
+    - prd
+    - dev
+    - stg
+
+  ProcessingJobSQSQueueVisibilityTimeout:
+    Type: Number
+    Default: 900
+
+  DynamodbRequestsTableName:
+    Type: String
+
+  DynamodbSettingsTableName:
+    Type: String
+
+  DyanmodbSortIndexName:
+    Type: String
+
+  EnableRecordTTL:
+    Type: String
+    Default: "false"
+    AllowedValues:
+    - "true"
+    - "false"
+    Description: Enable DynamoDB TTL on the requests table `ttl` attribute (pairs with RECORD_TTL_DAYS).
+
+
+Conditions:
+
+  RecordTTLEnabled: !Equals [!Ref EnableRecordTTL, "true"]
+
+
+Resources:
+
+  DeadletterSQSQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub '${Prefix}-afmxdlq-${UniqueSuffix}-${APIGatewayStage}'
+      DelaySeconds: 0
+      MaximumMessageSize: 262144
+      MessageRetentionPeriod: 345600
+      ReceiveMessageWaitTimeSeconds: 0
+      VisibilityTimeout: 900
+
+  ProcessingJobSQSQueue:
+    Type: AWS::SQS::Queue
+    DependsOn:
+      - DeadletterSQSQueue
+    Properties:
+      QueueName: !Sub '${Prefix}-sdjobs-${UniqueSuffix}-${APIGatewayStage}'
+      DelaySeconds: 0
+      MaximumMessageSize: 262144
+      MessageRetentionPeriod: 345600
+      ReceiveMessageWaitTimeSeconds: 0
+      VisibilityTimeout: !Ref ProcessingJobSQSQueueVisibilityTimeout
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt DeadletterSQSQueue.Arn
+        maxReceiveCount: 10
+
+  ProcessingJobRequestsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Ref DynamodbRequestsTableName
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: job_id
+          AttributeType: S
+        - AttributeName: yyyymm
+          AttributeType: N
+        - AttributeName: sort_key
+          AttributeType: N
+      KeySchema:
+        - AttributeName: job_id
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: !Ref DyanmodbSortIndexName
+          KeySchema:
+            - AttributeName: yyyymm
+              KeyType: HASH
+            - AttributeName: sort_key
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+      TimeToLiveSpecification:
+        AttributeName: ttl
+        Enabled: !If [RecordTTLEnabled, true, false]
+
+  ProcessingSettingsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Ref DynamodbSettingsTableName
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: settings_id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: settings_id
+          KeyType: HASH
+
+
+Outputs:
+
+  ProcessingJobSQSQueueUrl:
+    Value: !Ref ProcessingJobSQSQueue
+    Export:
+      Name: !Sub '${AWS::StackName}-ProcessingJobSQSQueueUrl'
+
+  ProcessingJobSQSQueueName:
+    Value: !GetAtt ProcessingJobSQSQueue.QueueName
+    Export:
+      Name: !Sub '${AWS::StackName}-ProcessingJobSQSQueueName'
+
+  DeadletterSQSQueueUrl:
+    Value: !Ref DeadletterSQSQueue
+    Export:
+      Name: !Sub '${AWS::StackName}-DeadletterSQSQueueUrl'
+
+  ProcessingJobRequestsTableName:
+    Value: !Ref ProcessingJobRequestsTable
+    Export:
+      Name: !Sub '${AWS::StackName}-ProcessingJobRequestsTableName'
+
+  ProcessingSettingsTableName:
+    Value: !Ref ProcessingSettingsTable
+    Export:
+      Name: !Sub '${AWS::StackName}-ProcessingSettingsTableName'
