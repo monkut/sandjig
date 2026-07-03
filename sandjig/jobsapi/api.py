@@ -23,7 +23,7 @@ from .. import settings
 from ..aws import SQS_CLIENT
 from ..functions import check_model_defaults, create_dynamodb_resources, get_timestamp_now, mask_string, noauthdecorator
 from ..models import RequestPostPayloadBaseModel, ResponsePostPayloadBaseModel, SettingsBaseModel
-from .dyanmodb.models import ItemDoesNotExistError, ProcessingJobModel, ProcessingSettingsModel
+from .dynamodb.models import ItemDoesNotExistError, ProcessingJobModel, ProcessingSettingsModel
 from .exceptions import QueryParamError
 from .functions import CustomJSONProvider, get_datettime_range_args, strtobool
 from .validation.definitions import (
@@ -218,7 +218,7 @@ def create_app(  # noqa: C901, PLR0915
     def get_latest_settings() -> dict:
         result = {}
         if SettingsModel is not None:
-            from .dyanmodb.models import ItemDoesNotExistError
+            from .dynamodb.models import ItemDoesNotExistError
 
             try:
                 item: dict = ProcessingSettingsModel.get_processingsettingsmodel_item(
