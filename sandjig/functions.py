@@ -26,7 +26,7 @@ def check_model_defaults(ModelClass: type[SettingsBaseModel]):  # noqa: N803
 
 def create_dynamodb_resources(SettingsModel: type[SettingsBaseModel] | None = None) -> dict:  # noqa: N803
     """Create the resources required for dynamodb."""
-    from .jobsapi.dyanmodb.models import ProcessingJobModel, ProcessingSettingsModel
+    from .jobsapi.dynamodb.models import ProcessingJobModel, ProcessingSettingsModel
 
     processingjobmodel_created = False
     processingsettingsmodel_created = False

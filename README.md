@@ -22,6 +22,18 @@ class MyResponsePostPayload(ResponsePostPayloadBaseModel):
 app = create_app(MyRequestPostPayload, MyResponsePostPayload, config={})
 ```
 
+### DynamoDB model imports
+
+Import DynamoDB-backed job models from the correctly spelled module path:
+
+```python
+from sandjig.jobsapi.dynamodb.models import ProcessingJobModel
+```
+
+The previous typo path, `sandjig.jobsapi.dyanmodb`, remains available as a
+deprecated compatibility shim for the 0.1.x line and emits a `DeprecationWarning`.
+It may be removed in a future minor release.
+
 ### With settings
 
 ```python

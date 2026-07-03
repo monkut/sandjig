@@ -2,7 +2,7 @@ import logging
 
 from . import settings
 from .aws import SQS_CLIENT
-from .jobsapi.dyanmodb.models import ProcessingJobModel, ProcessingSettingsModel
+from .jobsapi.dynamodb.models import ProcessingJobModel, ProcessingSettingsModel
 
 logger = logging.getLogger(__name__)
 
