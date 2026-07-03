@@ -256,7 +256,16 @@ def create_app(  # noqa: C901, PLR0915
             response.status_code = HTTPStatus.OK
         return response
 
-    create_dynamodb_resources(SettingsModel)
+    # Defer AWS access out of create_app so app construction performs no network calls
+    # (table creation runs once, on the first request handled by this process)
+    dynamodb_resources_initialized = False
+
+    @app.before_request
+    def ensure_dynamodb_resources() -> None:
+        nonlocal dynamodb_resources_initialized
+        if not dynamodb_resources_initialized:
+            create_dynamodb_resources(SettingsModel)
+            dynamodb_resources_initialized = True
 
     @app.route(f"{endpoint_prefix}/jobs/<job_id>", methods=["GET"])
     @authorizationdecorator

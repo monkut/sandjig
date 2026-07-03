@@ -4,7 +4,7 @@ from http import HTTPStatus
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from time import sleep
-from unittest import TestCase
+from unittest import TestCase, mock
 from urllib.parse import quote_plus
 
 import pytest
@@ -144,6 +144,21 @@ class JobsApiAppTestCase(TestCase):
             self.fail("AssertionError not raised")
         except AssertionError:
             pass
+
+    def test_create_app__no_aws_access_at_construction(self):
+        with mock.patch("sandjig.jobsapi.api.create_dynamodb_resources") as mocked_create:
+            app = create_app(TestRequestPostPayloadModel, TestResponsePostPayloadModel)
+            # construction must not touch AWS
+            mocked_create.assert_not_called()
+
+            app.config["TESTING"] = True
+            client = app.test_client()
+            client.get("/healthcheck")
+            mocked_create.assert_called_once_with(None)
+
+            # initialization runs only once per process
+            client.get("/healthcheck")
+            mocked_create.assert_called_once()
 
     def test_api_post__invalid_missing_required(self):
         valid_request_data = {"value": 1}
@@ -606,6 +621,10 @@ class SettingsApiAppTestCase(TestCase):
 
     def test_settings_get__itemdoesnotexist(self):
         self._prepare_app(with_settings=True)
+
+        # trigger lazy dynamodb initialization (tables/initial entry are created on first request)
+        response = self.client.get("/settings")
+        self.assertEqual(response.status_code, HTTPStatus.OK, response.data)
 
         # delete settings
         item = ProcessingSettingsModel.get_processingsettingsmodel_item(settings.SETTINGS_ID, as_dict=False)
