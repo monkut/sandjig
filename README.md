@@ -121,7 +121,37 @@ Only available when a `SettingsBaseModel` subclass is passed to `create_app()`.
 | `SQS_QUEUE_URL` | If set, job requests are sent as messages to this SQS queue |
 | `ENDPOINT_PREFIX` | Prefix for `/jobs` endpoints (must start with `/`) |
 | `JOBREQUEST_CALLBACK_FUNCTION` | Callable invoked on successful job request with `job_id` argument |
+| `JOBREQUEST_AUTHORIZATION_FUNCTION` | Callable invoked with the decoded `POST /jobs` payload *before* validation/enqueue. Return `None` to allow the request, or a Flask response (e.g. `({"message": "unauthorized"}, 401)`) to reject it. |
+| `JOBREQUEST_TRANSFORM_FUNCTION` | Callable invoked with the decoded `POST /jobs` payload after authorization and *before* enqueue. Returns the payload to enqueue -- server-injected fields override client-supplied values and are validated against the request model before enqueue. NOTE: the raw client payload is spec-validated first, so fields the server injects must be declared *optional* on the request model. |
 | `JSON_AS_ASCII` | If `True`, JSON dumped as ASCII (default `False`) |
+
+### Request hooks example
+
+Enforce host-app authentication and inject the server-side `user_id` (Flask request context is available inside the hooks):
+
+```python
+from http import HTTPStatus
+
+from flask import session
+
+
+def require_login(payload: dict) -> tuple[dict, int] | None:
+    if "user_id" not in session:
+        return {"message": "authentication required"}, HTTPStatus.UNAUTHORIZED
+    return None  # allow
+
+
+def inject_user_id(payload: dict) -> dict:
+    payload["user_id"] = session["user_id"]  # overrides any client-supplied value
+    return payload
+
+
+config = {
+    "JOBREQUEST_AUTHORIZATION_FUNCTION": require_login,
+    "JOBREQUEST_TRANSFORM_FUNCTION": inject_user_id,
+}
+app = create_app(MyRequestModel, MyResponseModel, config=config)
+```
 
 
 ## CLI Commands

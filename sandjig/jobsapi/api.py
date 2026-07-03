@@ -63,6 +63,13 @@ assert STATIC_ASSETS_DIRECTORY.exists(), STATIC_ASSETS_DIRECTORY
 REQUIRED_ENDPOINT_PREFIX_CHARACTER = "/"
 
 
+def _get_validated_hook(config: dict[str, Any], config_key: str) -> Callable | None:
+    """Retrieve an optional hook callable from config, asserting it is callable when set."""
+    hook = config.get(config_key)
+    assert hook is None or isinstance(hook, Callable), f"given config['{config_key}'] is not Callable!"
+    return hook
+
+
 def create_app(  # noqa: C901, PLR0915
     RequestPostBodyModel: type[RequestPostPayloadBaseModel],  # noqa: C901, N806, N803
     ResponsePostBodyModel: type[ResponsePostPayloadBaseModel],  # noqa: C901, N806, N803
@@ -174,6 +181,10 @@ def create_app(  # noqa: C901, PLR0915
 
     else:
         callback_function = None
+
+    # optional request-processing hooks (validated as callable when set)
+    authorization_function = _get_validated_hook(config, "JOBREQUEST_AUTHORIZATION_FUNCTION")
+    transform_function = _get_validated_hook(config, "JOBREQUEST_TRANSFORM_FUNCTION")
 
     # add interface for obtaining the current authorization decorator
     app.get_authorization_decorator = lambda *_: authorizationdecorator
@@ -630,6 +641,17 @@ def create_app(  # noqa: C901, PLR0915
             logger.debug("decoding body as json...")
             request_data = request.get_json(force=True)
             logger.debug("SUCCESS!")
+
+        if authorization_function:
+            # None allows the request; any other return value is the rejection response
+            rejection = authorization_function(request_data)
+            if rejection is not None:
+                logger.info("config['JOBREQUEST_AUTHORIZATION_FUNCTION'] rejected job request")
+                return rejection
+
+        if transform_function:
+            # applied before validation so server-injected fields are validated
+            request_data = transform_function(request_data)
 
         try:
             validated_data = RequestPostBodyModel(**request_data)

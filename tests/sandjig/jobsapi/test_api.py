@@ -71,6 +71,80 @@ class JobsApiAppTestCase(TestCase):
         except AssertionError:
             pass
 
+    def test_create_app__with_authorization_function_rejects(self):
+        def deny_all(payload: dict) -> tuple[dict, int]:  # noqa: ARG001
+            return {"message": "authentication required"}, HTTPStatus.UNAUTHORIZED
+
+        config = {"JOBREQUEST_AUTHORIZATION_FUNCTION": deny_all}
+        app = create_app(TestRequestPostPayloadModel, TestResponsePostPayloadModel, config=config)
+        app.config["TESTING"] = True
+        client = app.test_client()
+        response = client.post("/jobs", json={"color": "purple", "value": 1})
+        self.assertEqual(response.status_code, HTTPStatus.UNAUTHORIZED)
+
+        # rejected request must NOT create a job
+        response = client.get("/jobs")
+        self.assertEqual(response.status_code, HTTPStatus.OK)
+        self.assertEqual(response.json["Jobs"], [])
+
+    def test_create_app__with_authorization_function_allows(self):
+        def allow_all(payload: dict) -> None:  # noqa: ARG001
+            return None
+
+        config = {"JOBREQUEST_AUTHORIZATION_FUNCTION": allow_all}
+        app = create_app(TestRequestPostPayloadModel, TestResponsePostPayloadModel, config=config)
+        app.config["TESTING"] = True
+        client = app.test_client()
+        response = client.post("/jobs", json={"color": "purple", "value": 1})
+        self.assertEqual(response.status_code, HTTPStatus.CREATED)
+
+    def test_create_app__with_authorization_function_invalid(self):
+        noncallable = "dummy"
+        config = {"JOBREQUEST_AUTHORIZATION_FUNCTION": noncallable}
+        try:
+            create_app(TestRequestPostPayloadModel, TestResponsePostPayloadModel, config=config)
+            self.fail("AssertionError not raised")
+        except AssertionError:
+            pass
+
+    def test_create_app__with_transform_function_overrides_client_value(self):
+        def force_value(payload: dict) -> dict:
+            payload["value"] = 42  # server-side override of client-supplied value
+            return payload
+
+        config = {"JOBREQUEST_TRANSFORM_FUNCTION": force_value}
+        app = create_app(TestRequestPostPayloadModel, TestResponsePostPayloadModel, config=config)
+        app.config["TESTING"] = True
+        client = app.test_client()
+        response = client.post("/jobs", json={"color": "purple", "value": 1})
+        self.assertEqual(response.status_code, HTTPStatus.CREATED)
+        self.assertEqual(response.json["request_payload"]["value"], 42)
+
+    def test_create_app__with_transform_function_client_payload_still_validated(self):
+        def add_missing_required(payload: dict) -> dict:
+            payload["value"] = 1
+            return payload
+
+        config = {"JOBREQUEST_TRANSFORM_FUNCTION": add_missing_required}
+        app = create_app(TestRequestPostPayloadModel, TestResponsePostPayloadModel, config=config)
+        app.config["TESTING"] = True
+        client = app.test_client()
+        # the client payload is spec-validated before the transform runs:
+        # a required field missing from the client payload is rejected even if the
+        # transform would supply it -- server-injected fields must be declared
+        # optional on the request model
+        response = client.post("/jobs", json={"color": "purple"})
+        self.assertEqual(response.status_code, HTTPStatus.UNPROCESSABLE_ENTITY)
+
+    def test_create_app__with_transform_function_invalid(self):
+        noncallable = "dummy"
+        config = {"JOBREQUEST_TRANSFORM_FUNCTION": noncallable}
+        try:
+            create_app(TestRequestPostPayloadModel, TestResponsePostPayloadModel, config=config)
+            self.fail("AssertionError not raised")
+        except AssertionError:
+            pass
+
     def test_api_post__invalid_missing_required(self):
         valid_request_data = {"value": 1}
         url = "/jobs"
