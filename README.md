@@ -30,9 +30,8 @@ Import DynamoDB-backed job models from the correctly spelled module path:
 from sandjig.jobsapi.dynamodb.models import ProcessingJobModel
 ```
 
-The previous typo path, `sandjig.jobsapi.dyanmodb`, remains available as a
-deprecated compatibility shim for the 0.1.x line and emits a `DeprecationWarning`.
-It may be removed in a future minor release.
+The previous typo path, `sandjig.jobsapi.dyanmodb`, has been **removed**. This is a
+breaking change — update any imports to `sandjig.jobsapi.dynamodb`.
 
 ### With settings
 
