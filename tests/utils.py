@@ -5,7 +5,7 @@ from pathlib import Path
 
 from sandjig import settings
 from sandjig.aws import SQS_CLIENT
-from sandjig.jobsapi.dyanmodb.models import ProcessingJobModel, ProcessingSettingsModel
+from sandjig.jobsapi.dynamodb.models import ProcessingJobModel, ProcessingSettingsModel
 from sandjig.models import RequestPostPayloadBaseModel, ResponsePostPayloadBaseModel, SettingsBaseModel
 
 logger = logging.getLogger(__name__)

@@ -1,4 +1,4 @@
-"""Model definitions for data stored in Dynamodb"""
+"""Model definitions for data stored in DynamoDB."""
 
 from __future__ import annotations
 

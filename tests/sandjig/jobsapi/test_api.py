@@ -12,7 +12,7 @@ from flask import Response
 
 from sandjig import create_app, settings
 from sandjig.aws import SQS_CLIENT
-from sandjig.jobsapi.dyanmodb.models import ProcessingSettingsModel
+from sandjig.jobsapi.dynamodb.models import ProcessingSettingsModel
 from sandjig.jobsapi.validation.definitions import StatusSupportedValues, ValidPatchValues
 
 from ...utils import (

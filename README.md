@@ -22,6 +22,17 @@ class MyResponsePostPayload(ResponsePostPayloadBaseModel):
 app = create_app(MyRequestPostPayload, MyResponsePostPayload, config={})
 ```
 
+### DynamoDB model imports
+
+Import DynamoDB-backed job models from the correctly spelled module path:
+
+```python
+from sandjig.jobsapi.dynamodb.models import ProcessingJobModel
+```
+
+The previous typo path, `sandjig.jobsapi.dyanmodb`, has been **removed**. This is a
+breaking change — update any imports to `sandjig.jobsapi.dynamodb`.
+
 ### With settings
 
 ```python
