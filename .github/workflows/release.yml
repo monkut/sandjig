@@ -1,0 +1,62 @@
+name: Release
+
+# Cut a release by pushing a semver tag from an already-validated commit:
+#   1. bump `version` in pyproject.toml, commit, merge to main (CI must pass)
+#   2. git tag vX.Y.Z && git push origin vX.Y.Z
+# This builds the sdist/wheel and publishes a GitHub Release with the wheel
+# attached and auto-generated notes. sandjig is `Private :: Do Not Upload`,
+# so nothing is pushed to a public index.
+
+on:
+  push:
+    tags: ["v*"]
+
+# Least privilege by default; the release job opts into contents: write.
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code repository
+        uses: actions/checkout@v4
+
+      - name: Verify tag matches pyproject.toml version
+        run: |
+          tag_version="${GITHUB_REF_NAME#v}"
+          pkg_version="$(grep -m1 '^version = ' pyproject.toml | sed -E 's/^version = "(.*)"/\1/')"
+          echo "tag=${tag_version} pyproject=${pkg_version}"
+          if [ "${tag_version}" != "${pkg_version}" ]; then
+            echo "::error::Tag ${GITHUB_REF_NAME} does not match pyproject.toml version ${pkg_version}. Bump pyproject.toml before tagging."
+            exit 1
+          fi
+
+      # Builds sdist + wheel and runs packaging sanity checks; uploads the
+      # artifact as "Packages".
+      - name: Build Python packages
+        uses: hynek/build-and-inspect-python-package@v2
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download built Python packages
+        uses: actions/download-artifact@v4
+        with:
+          name: Packages
+          path: dist
+
+      - name: Create GitHub Release with built packages
+        uses: ncipollo/release-action@v1
+        with:
+          artifacts: dist/*
+          tag: ${{ github.ref_name }}
+          generateReleaseNotes: true
+          draft: false
