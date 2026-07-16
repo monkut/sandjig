@@ -135,6 +135,7 @@ Only available when a `SettingsBaseModel` subclass is passed to `create_app()`.
 | `JOBREQUEST_AUTHORIZATION_FUNCTION` | Callable invoked with the decoded `POST /jobs` payload *before* validation/enqueue. Return `None` to allow the request, or a Flask response (e.g. `({"message": "unauthorized"}, 401)`) to reject it. |
 | `JOBREQUEST_TRANSFORM_FUNCTION` | Callable invoked with the decoded `POST /jobs` payload after authorization and *before* enqueue. Returns the payload to enqueue -- server-injected fields override client-supplied values and are validated against the request model before enqueue. NOTE: the raw client payload is spec-validated first, so fields the server injects must be declared *optional* on the request model. |
 | `JSON_AS_ASCII` | If `True`, JSON dumped as ASCII (default `False`) |
+| `RESPONSE_TIMEZONE` | IANA timezone applied to `JobResponse` datetimes (e.g. `UTC`, `America/Los_Angeles`). Default `Asia/Tokyo` (`+09:00`) |
 
 ### Request hooks example
 

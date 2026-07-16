@@ -110,9 +110,9 @@ class ProcessingJobModel(Model):
                 key = attr.replace("_timestamp", "_datetime")
                 if value:
                     utc = datetime.datetime.fromtimestamp(value, tz=datetime.UTC)
-                    jst = utc.astimezone(settings.JST)
-                    jst = jst.replace(microsecond=0)  # remove microseconds portion
-                    result_dict[key] = jst.isoformat()
+                    localized = utc.astimezone(settings.RESPONSE_TIMEZONE)
+                    localized = localized.replace(microsecond=0)  # remove microseconds portion
+                    result_dict[key] = localized.isoformat()
                 else:
                     result_dict[key] = None
             else:
@@ -377,9 +377,9 @@ class ProcessingSettingsModel(Model):
                 key = attr.replace("_timestamp", "_datetime")
                 if value:
                     utc = datetime.datetime.fromtimestamp(value, tz=datetime.UTC)
-                    jst = utc.astimezone(settings.JST)
-                    jst = jst.replace(microsecond=0)  # remove microseconds portion
-                    result_dict[key] = jst.isoformat()
+                    localized = utc.astimezone(settings.RESPONSE_TIMEZONE)
+                    localized = localized.replace(microsecond=0)  # remove microseconds portion
+                    result_dict[key] = localized.isoformat()
                 else:
                     result_dict[key] = None
             elif attr == "settings_id":
