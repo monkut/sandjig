@@ -230,3 +230,9 @@ SQS_SERVICE_ENDPOINT=http://localhost:4566
 STS_SERVICE_ENDPOINT=http://localhost:4566
 DYNAMODB_SERVICE_ENDPOINT=http://localhost:4566
 ```
+
+Optional runtime configuration:
+
+| Variable | Description |
+|---|---|
+| `RESPONSE_TIMEZONE` | IANA timezone applied to `JobResponse` datetimes (e.g. `UTC`, `America/Los_Angeles`). Default `Asia/Tokyo` (`+09:00`) |

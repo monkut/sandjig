@@ -2,6 +2,7 @@ import datetime
 import logging
 import os
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 import boto3
 
@@ -34,6 +35,12 @@ DEFAULT_API_VERSION = "v1.0"
 API_VERSION = os.getenv("API_VERSION", DEFAULT_API_VERSION)
 
 JST = datetime.timezone(datetime.timedelta(hours=+9))
+
+# Timezone applied to JobResponse datetimes in as_dict(). Defaults to Asia/Tokyo
+# (+09:00) for backwards compatibility; deployments outside Japan (e.g. us-west-2)
+# set RESPONSE_TIMEZONE to an IANA name like "UTC" or "America/Los_Angeles".
+DEFAULT_RESPONSE_TIMEZONE = "Asia/Tokyo"
+RESPONSE_TIMEZONE = ZoneInfo(os.getenv("RESPONSE_TIMEZONE", DEFAULT_RESPONSE_TIMEZONE))
 
 TESTING = strtobool(os.getenv("TESTING", "False"))
 
