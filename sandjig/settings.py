@@ -95,14 +95,30 @@ AWS_SERVICE_ENDPOINTS = {
 logger.info(f"AWS_SERVICE_ENDPOINTS: {AWS_SERVICE_ENDPOINTS}")
 
 DEFAULT_AWS_ACCOUNT_ID = None
-AWS_ACCOUNT_ID = os.getenv("AWS_ACCOUNT_ID", DEFAULT_AWS_ACCOUNT_ID)
-if not AWS_ACCOUNT_ID:
-    AWS_ACCOUNT_ID = (
-        boto3.client("sts", region_name=AWS_DEFAULT_REGION, endpoint_url=AWS_SERVICE_ENDPOINTS["sts"])
-        .get_caller_identity()
-        .get("Account")
-    )
-logger.info(f"AWS_ACCOUNT_ID={AWS_ACCOUNT_ID}")
+_aws_account_id_cache: str | None = os.getenv("AWS_ACCOUNT_ID", DEFAULT_AWS_ACCOUNT_ID)
+
+
+def get_aws_account_id() -> str:
+    """Resolve the AWS account id lazily: env ``AWS_ACCOUNT_ID``, else STS on first use.
+
+    Importing this module must not require AWS credentials/network (#21) —
+    the STS call runs only when the account id is actually needed (deploy/CLI paths).
+    """
+    global _aws_account_id_cache  # noqa: PLW0603 -- process-wide cache of an immutable value
+    if not _aws_account_id_cache:
+        _aws_account_id_cache = str(
+            boto3.client("sts", region_name=AWS_DEFAULT_REGION, endpoint_url=AWS_SERVICE_ENDPOINTS["sts"])
+            .get_caller_identity()["Account"]
+        )
+        logger.info(f"AWS_ACCOUNT_ID={_aws_account_id_cache}")
+    return _aws_account_id_cache
+
+
+def __getattr__(name: str) -> str:
+    """PEP 562: keep ``settings.AWS_ACCOUNT_ID`` attribute access working, lazily."""
+    if name == "AWS_ACCOUNT_ID":
+        return get_aws_account_id()
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 SANDJIG_SUFFIX = os.getenv("SANDJIG_SUFFIX", None)
 
@@ -186,7 +202,11 @@ DEFAULT_PROCESSINGJOB_SQS_QUEUE_NAME = "test-processingjob-queue"
 PROCESSINGJOB_SQS_QUEUE_NAME = os.getenv("PROCESSINGJOB_SQS_QUEUE_NAME", DEFAULT_PROCESSINGJOB_SQS_QUEUE_NAME)
 logger.info(f"PROCESSINGJOB_SQS_QUEUE_NAME={PROCESSINGJOB_SQS_QUEUE_NAME}")
 
-DEFAULT_PROCESSINGJOB_REQUEST_QUEUE_URL = f"http://localhost:4566/{AWS_ACCOUNT_ID}/{PROCESSINGJOB_SQS_QUEUE_NAME}"
+# localstack-only default; a real deployment sets PROCESSINGJOB_REQUEST_QUEUE_URL explicitly.
+# Uses the env value (or the localstack dummy account) so import stays STS-free (#21).
+DEFAULT_PROCESSINGJOB_REQUEST_QUEUE_URL = (
+    f"http://localhost:4566/{os.getenv('AWS_ACCOUNT_ID', '000000000000')}/{PROCESSINGJOB_SQS_QUEUE_NAME}"
+)
 PROCESSINGJOB_REQUEST_QUEUE_URL = os.getenv("PROCESSINGJOB_REQUEST_QUEUE_URL", DEFAULT_PROCESSINGJOB_REQUEST_QUEUE_URL)
 logger.info(f"PROCESSINGJOB_REQUEST_QUEUE_URL={PROCESSINGJOB_REQUEST_QUEUE_URL}")
 
