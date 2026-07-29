@@ -44,6 +44,9 @@ RESPONSE_TIMEZONE = ZoneInfo(os.getenv("RESPONSE_TIMEZONE", DEFAULT_RESPONSE_TIM
 
 TESTING = strtobool(os.getenv("TESTING", "False"))
 
+# Skip lazy DynamoDB table creation (resources-only deployments manage tables via CFn) (#22)
+SKIP_TABLE_CREATE = strtobool(os.getenv("SANDJIG_SKIP_TABLE_CREATE", "False"))
+
 DEFAULT_BASIC_AUTH_USERNAME = "apibasicauthuser"
 BASIC_AUTH_USERNAME = os.getenv("BASIC_AUTH_USERNAME", DEFAULT_BASIC_AUTH_USERNAME)
 BASIC_AUTH_PASSWORD = os.getenv("BASIC_AUTH_PASSWORD", None)

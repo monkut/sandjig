@@ -256,16 +256,25 @@ def create_app(  # noqa: C901, PLR0915
             response.status_code = HTTPStatus.OK
         return response
 
-    # Defer AWS access out of create_app so app construction performs no network calls
-    # (table creation runs once, on the first request handled by this process)
+    # Defer AWS access out of create_app so app construction performs no network calls.
+    # Table creation runs once, before the first request that actually needs DynamoDB —
+    # only the sandjig job/settings routes; embedder-registered routes (e.g. a /health
+    # blueprint) must not acquire a DynamoDB dependency (#22).
+    # SKIP_TABLE_CREATE (config or env SANDJIG_SKIP_TABLE_CREATE) disables creation entirely
+    # for resources-only deployments where the tables are template-managed.
+    skip_table_create = bool(config.get("SKIP_TABLE_CREATE", settings.SKIP_TABLE_CREATE))
     dynamodb_resources_initialized = False
+    dynamodb_route_prefixes = (f"{endpoint_prefix}/jobs", f"{endpoint_prefix}/settings")
 
     @app.before_request
     def ensure_dynamodb_resources() -> None:
         nonlocal dynamodb_resources_initialized
-        if not dynamodb_resources_initialized:
-            create_dynamodb_resources(SettingsModel)
-            dynamodb_resources_initialized = True
+        if skip_table_create or dynamodb_resources_initialized:
+            return
+        if not request.path.startswith(dynamodb_route_prefixes):
+            return
+        create_dynamodb_resources(SettingsModel)
+        dynamodb_resources_initialized = True
 
     @app.route(f"{endpoint_prefix}/jobs/<job_id>", methods=["GET"])
     @authorizationdecorator
