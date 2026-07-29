@@ -124,3 +124,50 @@ class JobsClientTestCase(TestCase):
         route_cmp = {k: v for k, v in route_item.items() if k not in ignore}
         client_cmp = {k: v for k, v in client_item.items() if k not in ignore}
         self.assertEqual(route_cmp, client_cmp)
+
+
+class JobsClientBestEffortTestCase(TestCase):
+    """best_effort mode (#30): state updates never fail the caller's payload work."""
+
+    def setUp(self) -> None:
+        reset_dynamodb()
+        reset_sqs_queue()
+        self.client = JobsClient(response_model=TestResponsePostPayloadModel, best_effort=True)
+
+    def _seed_job(self, status: str = StatusSupportedValues.QUEUED.value) -> str:
+        job_id = str(uuid4())
+        put_processingjobmodel_item(
+            job_id=job_id,
+            request_payload={"color": "purple", "value": 1},
+            status=status,
+        )
+        return job_id
+
+    def test_set_status_missing_job_returns_none(self):
+        result = self.client.set_status(str(uuid4()), StatusSupportedValues.PROCESSING.value)
+        self.assertIsNone(result)
+
+    def test_mark_error_missing_job_returns_none(self):
+        result = self.client.mark_error(str(uuid4()), ["boom"])
+        self.assertIsNone(result)
+
+    def test_set_status_success_still_returns_job(self):
+        job_id = self._seed_job()
+        item = self.client.set_status(job_id, StatusSupportedValues.PROCESSING.value)
+        self.assertIsNotNone(item)
+        self.assertEqual(item["status"], StatusSupportedValues.PROCESSING.value)
+
+    def test_set_status_invalid_status_always_raises(self):
+        """A bad status value is a programming error — never swallowed."""
+        job_id = self._seed_job()
+        with pytest.raises(ValueError, match="invalid status"):
+            self.client.set_status(job_id, "not-a-status")
+
+    def test_submit_result_missing_job_still_raises(self):
+        """A lost result is a real failure — submit_result is never best-effort."""
+        with pytest.raises(JobNotFoundError):
+            self.client.submit_result(str(uuid4()), {"result": 7})
+
+    def test_get_job_missing_still_raises(self):
+        with pytest.raises(JobNotFoundError):
+            self.client.get_job(str(uuid4()))

@@ -54,10 +54,13 @@ class JobsClient:
     status (workers, failure handlers) need not supply it.
     """
 
-    def __init__(self, response_model: type[ResponsePostPayloadBaseModel] | None = None) -> None:
+    def __init__(
+        self, response_model: type[ResponsePostPayloadBaseModel] | None = None, best_effort: bool = False
+    ) -> None:
         if response_model is not None:
             assert issubclass(response_model, ResponsePostPayloadBaseModel)
         self._response_model = response_model
+        self._best_effort = best_effort
 
     def get_job(self, job_id: str) -> dict:
         """Return the job's :meth:`ProcessingJobModel.as_dict` shape (== GET /jobs/<id>)."""
@@ -86,32 +89,43 @@ class JobsClient:
         )
         return self.get_job(job_id)
 
-    def mark_error(self, job_id: str, errors: list[str] | str) -> dict:
+    def mark_error(self, job_id: str, errors: list[str] | str) -> dict | None:
         """Mark the job errored, appending ``errors`` (== PATCH /jobs/<id>, status=error)."""
         return self.set_status(job_id, StatusSupportedValues.ERROR.value, errors=errors)
 
-    def set_status(self, job_id: str, status: str, errors: list[str] | str | None = None) -> dict:
+    def set_status(self, job_id: str, status: str, errors: list[str] | str | None = None) -> dict | None:
         """Transition the job's status, optionally appending ``errors`` (== PATCH /jobs/<id>).
 
         ``status`` must be a :class:`ValidPatchValues` member — the same
         vocabulary the PATCH route accepts. ``errors`` are appended to any
         existing list, matching the route's append (not overwrite) behaviour.
+
+        With ``best_effort=True`` (#30) update failures — DynamoDB
+        unavailability/throttling, missing job — are logged and return ``None``
+        so workers never fail their payload work over state bookkeeping. An
+        invalid ``status`` is a programming error and always raises.
         """
         try:
             valid_status = ValidPatchValues(status).value
         except ValueError as exc:
             raise ValueError(f"invalid status '{status}'; must be one of {ValidPatchValues.values()}") from exc
 
-        item = self._get_item(job_id)
-        now = get_timestamp_now()
-        actions: list[Action] = [
-            ProcessingJobModel.status.set(valid_status),
-            ProcessingJobModel.updated_timestamp.set(now),
-        ]
-        if errors is not None:
-            actions.append(ProcessingJobModel.errors.set(self._append_errors(item, errors)))
-        item.update(actions=actions)
-        return self.get_job(job_id)
+        try:
+            item = self._get_item(job_id)
+            now = get_timestamp_now()
+            actions: list[Action] = [
+                ProcessingJobModel.status.set(valid_status),
+                ProcessingJobModel.updated_timestamp.set(now),
+            ]
+            if errors is not None:
+                actions.append(ProcessingJobModel.errors.set(self._append_errors(item, errors)))
+            item.update(actions=actions)
+            return self.get_job(job_id)
+        except Exception:
+            if not self._best_effort:
+                raise
+            logger.warning(f"best-effort set_status(job_id={job_id}, status={valid_status}) failed; continuing")
+            return None
 
     @staticmethod
     def _append_errors(item: ProcessingJobModel, new_errors: list[str] | str) -> list[str]:
