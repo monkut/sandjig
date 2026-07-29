@@ -6,8 +6,6 @@ from base64 import b64decode
 from binascii import Error as PaddingError
 from urllib.parse import unquote
 
-SALT = os.getenv("SALT", "sandjig-324789jh")
-
 logging.basicConfig(
     stream=sys.stdout, level=logging.INFO, format="%(asctime)s [%(levelname)s] (%(name)s) %(funcName)s: %(message)s"
 )
