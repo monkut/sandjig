@@ -57,7 +57,7 @@ Resources:
   DeadletterSQSQueue:
     Type: AWS::SQS::Queue
     Properties:
-      QueueName: !Sub '${Prefix}-afmxdlq-${UniqueSuffix}-${APIGatewayStage}'
+      QueueName: !Sub '${Prefix}-jobsdlq-${UniqueSuffix}-${APIGatewayStage}'
       DelaySeconds: 0
       MaximumMessageSize: 262144
       MessageRetentionPeriod: 345600

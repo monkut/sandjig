@@ -85,7 +85,6 @@ class ProcessingJobModel(Model):
     yyyymm = NumberAttribute(default=get_yyyymm_key)
     sort_key = NumberAttribute(default=get_sort_key)
     status = UnicodeAttribute(default=settings.PROCESSINGJOB_STATUS_DEFAULT)
-    predictor_status = UnicodeAttribute(null=True)
     registered_timestamp = NumberAttribute(default=get_timestamp_now)
     updated_timestamp = NumberAttribute(default=get_timestamp_now)
     completed_timestamp = NumberAttribute(null=True)
@@ -121,14 +120,6 @@ class ProcessingJobModel(Model):
         # replace settings {} with None -- fails JSON validation if {}
         if not result_dict["settings"] and isinstance(result_dict["settings"], dict):
             result_dict["settings"] = None
-        if (
-            "predictor_status" in result_dict
-            and result_dict["predictor_status"]
-            and result_dict["status"] != "cancelled"
-        ):
-            result_dict["status"] = result_dict["predictor_status"]
-        if "predictor_status" in result_dict:
-            result_dict.pop("predictor_status")
         response_payload = result_dict.get("response_payload")
         result_dict["result_count"] = (
             response_payload.get("result_count", 0) if isinstance(response_payload, dict) else 0
@@ -331,7 +322,7 @@ class ProcessingJobModel(Model):
     def get_sqs_message(self, as_json: bool = True) -> dict | str:
         """Convert entry to ProcessingJob Request message format"""
         message: dict[str, int | float | str | None] | str = {}
-        ignore_keys = ("sort_key", "status", "predictor_status", "yyyymm")
+        ignore_keys = ("sort_key", "status", "yyyymm")
         for attr in self.get_attributes().keys():
             if attr in ignore_keys:
                 continue

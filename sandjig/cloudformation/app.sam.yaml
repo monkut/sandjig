@@ -59,7 +59,7 @@ Resources:
   DeadletterSQSQueue:
     Type: AWS::SQS::Queue
     Properties:
-      QueueName: !Sub '${Prefix}-afmxdlq-${UniqueSuffix}-${APIGatewayStage}'
+      QueueName: !Sub '${Prefix}-jobsdlq-${UniqueSuffix}-${APIGatewayStage}'
       DelaySeconds: 0
       MaximumMessageSize: 262144
       MessageRetentionPeriod: 345600
@@ -84,7 +84,7 @@ Resources:
   BasicAuthorizerFunc:
     Type: AWS::Serverless::Function
     Properties:
-      FunctionName: !Sub '${Prefix}-afmxathzr-${UniqueSuffix}-${APIGatewayStage}'
+      FunctionName: !Sub '${Prefix}-basicauthzr-${UniqueSuffix}-${APIGatewayStage}'
       CodeUri:
         Key: !Ref SandjigAuthorizerPackageName
         Bucket: !Ref SourceS3BucketName
