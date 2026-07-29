@@ -92,6 +92,7 @@ class ProcessingJobModel(Model):
     request_payload = JSONAttribute()
     response_payload = JSONAttribute(null=True)
     errors = JSONAttribute(null=True)
+    warnings = JSONAttribute(null=True)  # non-terminal degraded-mode notes; a completed job may carry warnings (#29)
 
     sort_index = SortIndex()
 

@@ -171,3 +171,59 @@ class JobsClientBestEffortTestCase(TestCase):
     def test_get_job_missing_still_raises(self):
         with pytest.raises(JobNotFoundError):
             self.client.get_job(str(uuid4()))
+
+    def test_add_warnings_missing_job_returns_none(self):
+        """add_warnings honors best_effort (#29 x #30)."""
+        result = self.client.add_warnings(str(uuid4()), ["degraded"])
+        self.assertIsNone(result)
+
+
+class JobsClientWarningsTestCase(TestCase):
+    """Non-terminal warnings (#29): completed jobs may carry degraded-mode notes."""
+
+    def setUp(self) -> None:
+        reset_dynamodb()
+        reset_sqs_queue()
+        self.client = JobsClient(response_model=TestResponsePostPayloadModel)
+
+    def _seed_job(self, status: str = StatusSupportedValues.QUEUED.value) -> str:
+        job_id = str(uuid4())
+        put_processingjobmodel_item(
+            job_id=job_id,
+            request_payload={"color": "purple", "value": 1},
+            status=status,
+        )
+        return job_id
+
+    def test_submit_result_with_warnings_stays_completed(self):
+        job_id = self._seed_job()
+        item = self.client.submit_result(job_id, {"result": 7}, warnings=["calendar missing; katazai lane skipped"])
+        self.assertEqual(item["status"], StatusSupportedValues.COMPLETED.value)
+        self.assertEqual(item["warnings"], ["calendar missing; katazai lane skipped"])
+        self.assertFalse(item["errors"])
+
+    def test_set_status_appends_warnings(self):
+        job_id = self._seed_job()
+        self.client.set_status(job_id, StatusSupportedValues.PROCESSING.value, warnings=["fallback K=7"])
+        item = self.client.set_status(job_id, StatusSupportedValues.PROCESSING.value, warnings=["another"])
+        self.assertEqual(item["warnings"], ["fallback K=7", "another"])
+
+    def test_add_warnings_does_not_change_status(self):
+        job_id = self._seed_job(status=StatusSupportedValues.PROCESSING.value)
+        item = self.client.add_warnings(job_id, "degraded input")
+        self.assertEqual(item["status"], StatusSupportedValues.PROCESSING.value)
+        self.assertEqual(item["warnings"], ["degraded input"])
+
+    def test_patch_route_appends_warnings(self):
+        """Route parity: PATCH /jobs/<id> accepts warnings alongside status/errors."""
+        job_id = self._seed_job()
+        app = create_app(TestRequestPostPayloadModel, TestResponsePostPayloadModel)
+        app.config["TESTING"] = True
+        http = app.test_client()
+        response = http.patch(
+            f"/jobs/{job_id}",
+            json={"status": StatusSupportedValues.PROCESSING.value, "warnings": ["from route"]},
+        )
+        self.assertEqual(response.status_code, HTTPStatus.ACCEPTED)
+        self.assertEqual(response.json["warnings"], ["from route"])
+        self.assertEqual(response.json["status"], StatusSupportedValues.PROCESSING.value)
