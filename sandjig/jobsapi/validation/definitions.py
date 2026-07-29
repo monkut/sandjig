@@ -6,8 +6,6 @@ from pydantic import BaseModel, Field
 
 from sandjig import settings
 
-INPUT_KEY_MATCH_PATTERN = r"([a-zA-Z0-9_-]+\/|)+((students|companies)_[0-9]{1,2}_(single|multiple)_[0-9]{14}.csv.gz)"
-
 
 class StrEnum(str, Enum):
     """Adds .values() method to string based Enums"""
