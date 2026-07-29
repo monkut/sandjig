@@ -31,6 +31,9 @@ dependencies = [
     "zappa",
 ]
 
+[project.scripts]
+sandjig = "sandjig.cli:main"
+
 [project.urls]
 Repository = "https://github.com/monkut/sandjig"
 

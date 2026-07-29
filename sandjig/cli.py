@@ -546,6 +546,11 @@ def process_commandline_args() -> None:
         copy_cfn_template_file(template_source, args.output)
 
 
-if __name__ == "__main__":
+def main() -> None:
+    """Console entry point (`sandjig` command via [project.scripts])."""
     logger.info(f"sandjig {JOBSAPI_VERSION}")
     process_commandline_args()
+
+
+if __name__ == "__main__":
+    main()
