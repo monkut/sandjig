@@ -176,6 +176,19 @@ sandjig template [-h] [-o OUTPUT]
 ```
 
 
+## Supported Python / Lambda runtime
+
+sandjig pins Python to `>=3.14,<3.15` and deploys to the AWS Lambda `python3.14`
+runtime (`ValidPythonRuntimes` in `sandjig/definitions.py`; SAM parameter
+`PythonRuntime`). Embedding applications must therefore run on Python 3.14 —
+match `requires-python = ">=3.14,<3.15"` in your own `pyproject.toml`, and use a
+`python3.14` runtime or `python:3.14` container base image when deploying your
+app Lambda yourself (resources-only mode).
+
+When AWS ships a newer runtime, add it to `ValidPythonRuntimes` and widen the
+pin in the same change so the package and the deploy targets stay in sync.
+
+
 ## Local Development
 
 Python: 3.14
