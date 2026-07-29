@@ -153,11 +153,15 @@ class JobsApiAppTestCase(TestCase):
 
             app.config["TESTING"] = True
             client = app.test_client()
+            # non-DynamoDB routes must not trigger table creation (#22)
             client.get("/healthcheck")
+            mocked_create.assert_not_called()
+
+            client.get("/jobs")
             mocked_create.assert_called_once_with(None)
 
             # initialization runs only once per process
-            client.get("/healthcheck")
+            client.get("/jobs")
             mocked_create.assert_called_once()
 
     def test_api_post__invalid_missing_required(self):
