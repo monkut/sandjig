@@ -1,6 +1,6 @@
 [project]
 name = "sandjig"
-version = "0.1.0"
+dynamic = ["version"]
 description = "Agent-native job state management API service for async APIs"
 authors = [{ name = "Kiconia Works", email = "developers@kiconiaworks.com" }]
 readme = "README.md"
@@ -45,6 +45,9 @@ dev = [
 [build-system]
 requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
+
+[tool.setuptools.dynamic]
+version = {attr = "sandjig.version.__version__"}
 
 [tool.setuptools.packages.find]
 where = ["."]  # list of folders that contain the packages (["."] by default)

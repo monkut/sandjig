@@ -1,1 +1,3 @@
-__version__ = "0.1.2"
+from sandjig.version import __version__
+
+__all__ = ["__version__"]
