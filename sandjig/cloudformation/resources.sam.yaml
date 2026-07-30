@@ -17,6 +17,12 @@ Parameters:
   UniqueSuffix:
     Type: String
 
+  ProjectId:
+    Type: String
+    Description: >-
+      Kippo project UUID for cost allocation tagging.
+      Register at https://mnzyopnb1c.execute-api.us-west-2.amazonaws.com/dev/admin/ to obtain.
+
   APIGatewayStage:
     Type: String
     Default: "stg"
@@ -63,6 +69,11 @@ Resources:
       MessageRetentionPeriod: 345600
       ReceiveMessageWaitTimeSeconds: 0
       VisibilityTimeout: 900
+      Tags:
+        - Key: ProjectId
+          Value: !Ref ProjectId
+        - Key: Project
+          Value: kanpaiko
 
   ProcessingJobSQSQueue:
     Type: AWS::SQS::Queue
@@ -78,6 +89,11 @@ Resources:
       RedrivePolicy:
         deadLetterTargetArn: !GetAtt DeadletterSQSQueue.Arn
         maxReceiveCount: 10
+      Tags:
+        - Key: ProjectId
+          Value: !Ref ProjectId
+        - Key: Project
+          Value: kanpaiko
 
   ProcessingJobRequestsTable:
     Type: AWS::DynamoDB::Table
@@ -106,6 +122,11 @@ Resources:
       TimeToLiveSpecification:
         AttributeName: ttl
         Enabled: !If [RecordTTLEnabled, true, false]
+      Tags:
+        - Key: ProjectId
+          Value: !Ref ProjectId
+        - Key: Project
+          Value: kanpaiko
 
   ProcessingSettingsTable:
     Type: AWS::DynamoDB::Table
@@ -118,6 +139,11 @@ Resources:
       KeySchema:
         - AttributeName: settings_id
           KeyType: HASH
+      Tags:
+        - Key: ProjectId
+          Value: !Ref ProjectId
+        - Key: Project
+          Value: kanpaiko
 
 
 Outputs:
