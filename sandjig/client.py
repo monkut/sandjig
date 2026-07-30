@@ -66,12 +66,13 @@ class JobsClient:
         """Return the job's :meth:`ProcessingJobModel.as_dict` shape (== GET /jobs/<id>)."""
         return self._get_item(job_id).as_dict()
 
-    def submit_result(self, job_id: str, response_payload: dict) -> dict:
+    def submit_result(self, job_id: str, response_payload: dict, warnings: list[str] | str | None = None) -> dict:
         """Record a completed result (== PUT /jobs/<id>).
 
         Validates ``response_payload`` against the configured ``response_model``,
         then sets ``status=completed`` with ``completed_timestamp`` and the
-        validated payload — identical to the PUT route.
+        validated payload — identical to the PUT route. ``warnings`` (#29) are
+        appended non-terminally: the job completes, but carries degraded-mode notes.
         """
         if self._response_model is None:
             raise ValueError("submit_result requires a response_model; construct JobsClient(response_model=...)")
@@ -79,26 +80,30 @@ class JobsClient:
 
         item = self._get_item(job_id)
         now = get_timestamp_now()
-        item.update(
-            actions=[
-                ProcessingJobModel.status.set(StatusSupportedValues.COMPLETED.value),
-                ProcessingJobModel.updated_timestamp.set(now),
-                ProcessingJobModel.completed_timestamp.set(now),
-                ProcessingJobModel.response_payload.set(validated.model_dump()),
-            ]
-        )
+        actions: list[Action] = [
+            ProcessingJobModel.status.set(StatusSupportedValues.COMPLETED.value),
+            ProcessingJobModel.updated_timestamp.set(now),
+            ProcessingJobModel.completed_timestamp.set(now),
+            ProcessingJobModel.response_payload.set(validated.model_dump()),
+        ]
+        if warnings is not None:
+            actions.append(ProcessingJobModel.warnings.set(self._append_values(item.warnings, warnings)))
+        item.update(actions=actions)
         return self.get_job(job_id)
 
     def mark_error(self, job_id: str, errors: list[str] | str) -> dict | None:
         """Mark the job errored, appending ``errors`` (== PATCH /jobs/<id>, status=error)."""
         return self.set_status(job_id, StatusSupportedValues.ERROR.value, errors=errors)
 
-    def set_status(self, job_id: str, status: str, errors: list[str] | str | None = None) -> dict | None:
-        """Transition the job's status, optionally appending ``errors`` (== PATCH /jobs/<id>).
+    def set_status(
+        self, job_id: str, status: str, errors: list[str] | str | None = None, warnings: list[str] | str | None = None
+    ) -> dict | None:
+        """Transition the job's status, optionally appending ``errors``/``warnings`` (== PATCH /jobs/<id>).
 
         ``status`` must be a :class:`ValidPatchValues` member — the same
-        vocabulary the PATCH route accepts. ``errors`` are appended to any
-        existing list, matching the route's append (not overwrite) behaviour.
+        vocabulary the PATCH route accepts. ``errors`` and ``warnings`` are
+        appended to any existing list, matching the route's append (not
+        overwrite) behaviour; warnings are non-terminal (#29).
 
         With ``best_effort=True`` (#30) update failures — DynamoDB
         unavailability/throttling, missing job — are logged and return ``None``
@@ -118,7 +123,9 @@ class JobsClient:
                 ProcessingJobModel.updated_timestamp.set(now),
             ]
             if errors is not None:
-                actions.append(ProcessingJobModel.errors.set(self._append_errors(item, errors)))
+                actions.append(ProcessingJobModel.errors.set(self._append_values(item.errors, errors)))
+            if warnings is not None:
+                actions.append(ProcessingJobModel.warnings.set(self._append_values(item.warnings, warnings)))
             item.update(actions=actions)
             return self.get_job(job_id)
         except Exception:
@@ -127,15 +134,35 @@ class JobsClient:
             logger.warning(f"best-effort set_status(job_id={job_id}, status={valid_status}) failed; continuing")
             return None
 
+    def add_warnings(self, job_id: str, warnings: list[str] | str) -> dict | None:
+        """Append ``warnings`` without changing the job's status (#29).
+
+        Honors ``best_effort`` (#30): update failures are logged and return ``None``.
+        """
+        try:
+            item = self._get_item(job_id)
+            item.update(
+                actions=[
+                    ProcessingJobModel.warnings.set(self._append_values(item.warnings, warnings)),
+                    ProcessingJobModel.updated_timestamp.set(get_timestamp_now()),
+                ]
+            )
+            return self.get_job(job_id)
+        except Exception:
+            if not self._best_effort:
+                raise
+            logger.warning(f"best-effort add_warnings(job_id={job_id}) failed; continuing")
+            return None
+
     @staticmethod
-    def _append_errors(item: ProcessingJobModel, new_errors: list[str] | str) -> list[str]:
-        """Append ``new_errors`` to the job's existing error list (route parity)."""
-        existing = item.errors if isinstance(item.errors, list) else []
-        if isinstance(new_errors, str):
-            existing.append(new_errors)
+    def _append_values(existing: list[str] | None, new_values: list[str] | str) -> list[str]:
+        """Append ``new_values`` to an existing list attribute (route-parity append semantics)."""
+        result = existing if isinstance(existing, list) else []
+        if isinstance(new_values, str):
+            result.append(new_values)
         else:
-            existing.extend(new_errors)
-        return existing
+            result.extend(new_values)
+        return result
 
     @staticmethod
     def _get_item(job_id: str) -> ProcessingJobModel:

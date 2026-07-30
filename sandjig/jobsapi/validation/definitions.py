@@ -44,6 +44,7 @@ class ProcessingJobPatchBody(BaseModel):
 
     status: ValidPatchValues
     errors: list[str] | None = None
+    warnings: list[str] | None = None
 
 
 class JobsApiQueryParams(BaseModel):

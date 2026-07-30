@@ -115,6 +115,7 @@ def create_app(  # noqa: C901, PLR0915
         completed_datetime=(datetime.datetime | None, None),
         status=(StatusSupportedValues, ...),
         errors=(list[str] | None, None),
+        warnings=(list[str] | None, None),
         result_count=(int, Field(description="出力される結果の数", default=0)),
         settings=settings_field,
         request_payload=(RequestPostBodyModel, ...),
@@ -443,11 +444,19 @@ def create_app(  # noqa: C901, PLR0915
         elif validated_new_errors is not None and isinstance(validated_new_errors, str):
             updated_errors.append(validated_new_errors)
 
+        # warnings append like errors, but are non-terminal (a completed job may carry warnings) (#29)
+        updated_warnings = getattr(item, "warnings", None)
+        if not isinstance(updated_warnings, list):
+            updated_warnings = []
+        if validated_data.warnings:
+            updated_warnings.extend(validated_data.warnings)
+
         try:
             item.update(
                 actions=[
                     ProcessingJobModel.status.set(validated_data.status),
                     ProcessingJobModel.errors.set(updated_errors),
+                    ProcessingJobModel.warnings.set(updated_warnings),
                     ProcessingJobModel.updated_timestamp.set(current_timestamp_utc),
                 ]
             )
